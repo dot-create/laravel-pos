@@ -2920,8 +2920,20 @@ function addContact() {
         representative_email: email
     };
 
-    // UI update function
+    const isDuplicate = $('#contact_person_body tr').toArray().some(row => {
+        const tds = $(row).find('td');
+        const emailExists = tds.eq(5).text().trim() === email;
+        const phoneExists = tds.eq(3).text().trim() === phone;
+        const mobileExists = tds.eq(4).text().trim() === mobile;
+        return emailExists || phoneExists || mobileExists;
+    });
 
+    if (isDuplicate && editContact === 0) {
+        toastr.warning("A contact with this email, phone, or mobile already exists.");
+        return;
+    }
+
+    // UI update function
     const buildTableRow = (contact) => `
         <tr data-id="${contact.id}">
             <td>${contact.id || '-'}</td>

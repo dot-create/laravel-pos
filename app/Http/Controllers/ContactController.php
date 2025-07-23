@@ -911,30 +911,62 @@ class ContactController extends Controller
 
     public function addContact(Request $request)
     {
-//       dd($request->all());
-        if ($request->edit > 0){
-            $contactPerson= ContactPerson::find($request->edit);
-            $contactPerson->contact_id=$request->id;
-            $contactPerson->representative_name=$request->representative_name;
-            $contactPerson->representative_position=$request->representative_position;
-            $contactPerson->representative_phone=$request->representative_phone;
-            $contactPerson->representative_mobile=$request->representative_mobile;
-            $contactPerson->representative_email=$request->representative_email;
-            $contactPerson->update();
-            return response()->json(['success' => true,'message'=>'Contact Updated successfully.','contact'=>$contactPerson]);
-        }else{
-            $contactPerson=new ContactPerson();
-            $contactPerson->contact_id=$request->id;
-            $contactPerson->representative_name=$request->representative_name;
-            $contactPerson->representative_position=$request->representative_position;
-            $contactPerson->representative_phone=$request->representative_phone;
-            $contactPerson->representative_mobile=$request->representative_mobile;
-            $contactPerson->representative_email=$request->representative_email;
-            $contactPerson->save();
-            return response()->json(['success' => true,'message'=>'Contact added successfully.','contact'=>$contactPerson]);
-        }
+        // Define the duplicate check condition (you can adjust fields as needed)
+        $duplicateCheck = ContactPerson::where('contact_id', $request->id)
+            ->where('representative_email', $request->representative_email);
 
+        if ($request->edit > 0) {
+            // Exclude the current record when checking for duplicates
+            $duplicate = $duplicateCheck->where('id', '!=', $request->edit)->first();
+
+            if ($duplicate) {
+                return response()->json([
+                    'success' => false,
+                    'msg' => 'Duplicate contact exists with same email for this contact.'
+                ]);
+            }
+
+            $contactPerson = ContactPerson::find($request->edit);
+            $contactPerson->contact_id = $request->id;
+            $contactPerson->representative_name = $request->representative_name;
+            $contactPerson->representative_position = $request->representative_position;
+            $contactPerson->representative_phone = $request->representative_phone;
+            $contactPerson->representative_mobile = $request->representative_mobile;
+            $contactPerson->representative_email = $request->representative_email;
+            $contactPerson->update();
+
+            return response()->json([
+                'success' => true,
+                'msg' => 'Contact updated successfully.',
+                'contact' => $contactPerson
+            ]);
+        } else {
+            $duplicate = $duplicateCheck->first();
+
+            if ($duplicate) {
+                return response()->json([
+                    'success' => false,
+                    'msg' => 'Duplicate contact exists with same email for this contact.'
+                ]);
+            }
+
+            $contactPerson = new ContactPerson();
+            $contactPerson->contact_id = $request->id;
+            $contactPerson->representative_name = $request->representative_name;
+            $contactPerson->representative_position = $request->representative_position;
+            $contactPerson->representative_phone = $request->representative_phone;
+            $contactPerson->representative_mobile = $request->representative_mobile;
+            $contactPerson->representative_email = $request->representative_email;
+            $contactPerson->save();
+
+            return response()->json([
+                'success' => true,
+                'msg' => 'Contact added successfully.',
+                'contact' => $contactPerson
+            ]);
+        }
     }
+
 
     /**
      * Retrieves list of customers, if filter is passed then filter it accordingly.
