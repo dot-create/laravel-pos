@@ -69,6 +69,12 @@
         </div>
         <div class="col-md-3">
             <div class="form-group">
+                {!! Form::label('request_list_filter_quotation_reference', __('Quotation reference') . ':') !!}
+                {!! Form::text('request_list_filter_quotation_reference', null, ['placeholder' => __('Quotation reference'), 'class' => 'form-control']); !!}
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="form-group">
                 {!! Form::label('purchase_list_filter_date_range', __('report.date_range') . ':') !!}
                 {!! Form::text('purchase_list_filter_date_range', null, ['placeholder' => __('lang_v1.select_a_date_range'), 'class' => 'form-control', 'readonly']); !!}
             </div>

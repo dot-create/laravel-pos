@@ -19,7 +19,7 @@ class CreateCustomerRequestsTable extends Migration
 
             $table->foreign('customer_id')
                 ->references('id')
-                ->on('users')
+                ->on('contacts')
                 ->onDelete('cascade');
         });
 

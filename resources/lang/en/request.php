@@ -98,5 +98,12 @@ return [
     'avaliable_quantity'=>'Avaliable Qty',
     'avaliable_status'=>'Avaliability Status',
     'Sell price wot / Selling price (Excluding TAX)'=>'Sell price wot / Selling price (Excluding TAX) ',
-    'current_stock'=>'Current Stock'
+    'current_stock'=>'Current Stock',
+    'representative_name' => 'Representative Name',
+    'representative_name_placeholder' => 'Enter representative name',
+    'representative_name_required' => 'Representative name is required',
+    'representative_name_max' => 'Representative name may not be greater than 255 characters',
+    'representative_name_string' => 'Representative name must be a string',
+    'contact_person' => 'Contact Person',
+
 ];

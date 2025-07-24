@@ -647,6 +647,10 @@ $(document).ready(function() {
                 if ($('#request_list_filter_sku_model').length) {
                     d.sku = $('#request_list_filter_sku_model').val();
                 }
+                if ($('#request_list_filter_quotation_reference').length) {
+                    d.qref = $('#request_list_filter_quotation_reference').val();
+                }
+
                 var start = '';
                 var end = '';
                 if ($('#request_list_filter_date_range').val()) {
@@ -1110,6 +1114,7 @@ $(document).ready(function() {
         'change',
         '#request_list_filter_customer_id,\
         #request_list_filter_status,\
+        #request_list_filter_quotation_reference,\
         #request_list_filter_sku_model',
         function() {
             request_table.ajax.reload();

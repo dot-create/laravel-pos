@@ -182,6 +182,9 @@ Route::middleware([
 
     Route::resource('products', 'ProductController');
 
+    Route::get('/contact-persons-by-location/{location_id}', [App\Http\Controllers\PurchaseController::class, 'getContactPersonsByLocation']);
+
+
     // Purchase Management
     Route::prefix('/purchases')->group(function () {
         Route::post('import-purchase-products', 'PurchaseController@importPurchaseProducts');

@@ -70,6 +70,13 @@
 
 			<div class="col-sm-3">
 				<div class="form-group">
+					{!! Form::label('contact_person_id', __('request.contact_person').':') !!}
+					{!! Form::select('contact_person_id', [], null, ['class' => 'form-control select2', 'id' => 'contact_person_id', 'placeholder' => __('messages.please_select')]) !!}
+				</div>
+			</div>
+
+			<div class="col-sm-3">
+				<div class="form-group">
 					{!! Form::label('recieve_location_id','Foreign Business Location:*') !!}
 					@show_tooltip(__('request.foreign_business_location'))
 					{!! Form::select('recieve_location_id', $business_locations, $default_location, ['class' => 'form-control select2 ', 'placeholder' => __('messages.please_select'), 'required'], $bl_attributes); !!}
@@ -270,6 +277,37 @@ function get_purchase_entry_row(product_id, variation_id,requestPage=true) {
     }
 }
 </script>
+
+<script>
+$(document).ready(function () {
+    $('#location_id').on('change', function () {
+        let locationId = $(this).val();
+        let $contactDropdown = $('#contact_person_id');
+
+        $contactDropdown.empty().append(`<option value="">Loading...</option>`);
+
+        if (locationId) {
+            $.ajax({
+                url: '/contact-persons-by-location/' + locationId,
+                method: 'GET',
+                success: function (data) {
+					console.log(data);
+                    $contactDropdown.empty().append('<option value="">{{ __("messages.please_select") }}</option>');
+                    data.forEach(function (person) {
+                        $contactDropdown.append(`<option value="${person.id}">${person.representative_name}</option>`);
+                    });
+                },
+                error: function () {
+                    $contactDropdown.empty().append('<option value="">{{ __("messages.something_went_wrong") }}</option>');
+                }
+            });
+        } else {
+            $contactDropdown.empty().append('<option value="">{{ __("messages.please_select") }}</option>');
+        }
+    });
+});
+</script>
+
 
 	@include('purchase.partials.keyboard_shortcuts')
 @endsection

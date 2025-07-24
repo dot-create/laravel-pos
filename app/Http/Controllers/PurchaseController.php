@@ -252,6 +252,10 @@ class PurchaseController extends Controller
                 $requests->where('status', request()->status);
             }
 
+            if (!empty(request()->qref)) {
+                $requests->where('request_reference', request()->qref);
+            }
+
             if (!empty(request()->sku)) {
                 $searchTerm = request()->sku;
                 $requests->whereHas('items', function ($q) use ($searchTerm) {
@@ -1387,6 +1391,7 @@ class PurchaseController extends Controller
             // $transaction_data['ref_no'] = $request->ref_no;
             $customerRequest=null;
             $customerRequest['business_id']=$business_id;
+            $customerRequest['contact_person_id']=$request->contact_person_id;
             $customerRequest['customer_id']=$request->contact_id;
             $customerRequest['request_reference']=$request->ref_no;
             $customerRequest['business_location_id']=$request->location_id;
@@ -2698,4 +2703,21 @@ class PurchaseController extends Controller
         return view('sell.request.create')
             ->with(compact('walk_in_customer','taxes', 'orderStatuses', 'business_locations', 'currency_details', 'default_purchase_status', 'customer_groups', 'types', 'shortcuts', 'payment_line', 'payment_types', 'accounts', 'bl_attributes', 'common_settings'));
     }
+
+
+    public function getContactPersonsByLocation($location_id)
+    {
+        $location = \App\BusinessLocation::findOrFail($location_id);
+
+        // Get contacts under this business
+        $contacts = \App\Contact::where('business_id', $location->business_id)->pluck('id');
+
+        // Get contact persons related to these contacts
+        $contactPersons = \App\ContactPerson::whereIn('contact_id', $contacts)
+            ->select('id', 'representative_name') // Adjust if you want more info
+            ->get();
+
+        return response()->json($contactPersons);
+    }
+
 }
