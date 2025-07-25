@@ -87,6 +87,7 @@
         <table class="table table-bordered table-striped ajax_view" id="request_table" style="width: 100%;">
             <thead>
                 <tr>
+                    <th>ID</th>
                     <th>Date</th>
                     <th>@lang('request.name')</th>
                     <th>@lang('request.ref_no')</th>

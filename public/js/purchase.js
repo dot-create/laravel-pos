@@ -668,6 +668,7 @@ $(document).ready(function() {
         },
         aaSorting: [[1, 'desc']],
         columns: [
+            { data: 'id', name: 'id' },
             { data: 'date', name: 'date' },
             { data: 'name', name: 'name' },
             { data: 'ref_no', name: 'ref_no' }, 

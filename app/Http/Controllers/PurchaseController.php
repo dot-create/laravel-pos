@@ -283,6 +283,7 @@ class PurchaseController extends Controller
                         });
                     }
                 })
+                ->addColumn('id', fn($row) => $row->id ?? 'N/A')
                 ->addColumn('date', fn($row) => $row->created_at ?? 'N/A')
                 ->addColumn('name', function ($row) {
                     $name = $row->contact->name ?? '';
@@ -503,19 +504,74 @@ class PurchaseController extends Controller
         // if (!auth()->user()->can('purchase.view') && !auth()->user()->can('purchase.create') && !auth()->user()->can('view_own_purchase')) {
         //     abort(403, 'Unauthorized action.');
         // }
+
+        
+        // $business_id = request()->session()->get('user.business_id');
+        
+        // $request = CustomerRequest::where('business_id', $business_id)->findOrFail($id);
+        
+        // // Eager load the assigned user relationship
+        // $items = RequestItem::where('request_id', $id)
+        //             ->with(['product', 'variation', 'assignedUser'])
+        //             ->get();
+
+        
+
+
         $business_id = request()->session()->get('user.business_id');
 
-        $request = CustomerRequest::where('id', $id)
-                ->with('contact:id,name','items','items.variation','items.variation.variation_location_details') // Load contact name
-                ->first();
+        $request = CustomerRequest::where('business_id', $business_id)
+                ->with('contact:id,name','items','items.variation','items.variation.variation_location_details', 'items.assignedUser') // Load contact name
+                ->firstOrFail();
         $business_locations = BusinessLocation::forDropdown($business_id,false,true);
         $bl_attributes = $business_locations['attributes'];
         $orderStatuses = $this->productUtil->requestStatuses();
         $items=$request->items;
         $currency_details = $this->transactionUtil->purchaseCurrencyDetails($business_id);
         $productUtil=$this->productUtil;
+
+        // Apply filters
+        $filters = [
+            'assigned_user' => $request->items->get('assigned_user'),
+            'status' => $request->get('status')
+        ];
+        
+        // Filter by assigned user
+        if (!empty($filters['assigned_user'])) {
+            if ($filters['assigned_user'] === 'unassigned') {
+                $items->whereNull('assigned_to');
+            } else {
+                $items->where('assigned_to', $filters['assigned_user']);
+            }
+        }
+        
+        // Filter by status
+        if (!empty($filters['status'])) {
+            $items->where('status', $filters['status']);
+        }
+        
+        // $items = $items->get();
+        
+        // Get all company users for filter dropdown
+        $companyUsers = User::whereHas('business_users', function($query) use ($business_id) {
+            $query->where('business_id', $business_id);
+        })->select('id', 'first_name', 'last_name', 'username')
+        ->get()
+        ->map(function($user) {
+            return [
+                'id' => $user->id,
+                'name' => trim($user->first_name . ' ' . $user->last_name) ?: $user->username
+            ];
+        });
+        
+        // Get unique statuses for status filter
+        $statuses = RequestItem::where('request_id', $request->id)
+                    ->select('status')
+                    ->distinct()
+                    ->pluck('status');
+
         return view('sell.request.show')
-            ->with(compact('request','business_locations','orderStatuses','bl_attributes','items','currency_details','productUtil','business_id'));
+            ->with(compact('request','business_locations','orderStatuses','bl_attributes','items','currency_details','productUtil','business_id', 'companyUsers', 'statuses', 'filters'));
     }
     // public function listPendingRequests()
     // {

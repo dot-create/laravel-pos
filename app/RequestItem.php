@@ -17,7 +17,8 @@ class RequestItem extends Model
                 'supply_ref',
                 'status',
                 'sell_price_wot',
-                'quantity'
+                'quantity',
+                'assigned_to'
             ];
     public function product()
     {
@@ -30,5 +31,13 @@ class RequestItem extends Model
     public function variation()
     {
         return $this->belongsTo(Variation::class, 'variation_id', 'id');
+    }
+    
+    /**
+     * Get the user assigned to this request item
+     */
+    public function assignedUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }

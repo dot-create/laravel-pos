@@ -15,6 +15,7 @@ use App\CustomerRequest;
 use App\Transaction;
 use App\PurchaseLine;
 use App\Currency;
+use App\User;
 use App\Utils\ProductUtil;
 use App\Utils\TransactionUtil;
 use App\Utils\BusinessUtil;
@@ -1368,5 +1369,142 @@ class RequestController extends Controller
         $title=$invoice_no;
         return view('sale_pos.partials.show_quote')
         ->with(compact('receipt', 'title'));
+    }
+
+
+    // Add these methods to your RequestController
+
+    /**
+     * Get company users for assignment dropdown
+     */
+    public function getCompanyUsers(Request $request)
+    {
+        $business_id = $request->session()->get('user.business_id');
+        
+        // Get all users belonging to the same business/company
+        $users = User::whereHas('business_users', function($query) use ($business_id) {
+            $query->where('business_id', $business_id);
+        })->select('id', 'first_name', 'last_name', 'username')
+        ->get()
+        ->map(function($user) {
+            return [
+                'id' => $user->id,
+                'name' => trim($user->first_name . ' ' . $user->last_name) ?: $user->username
+            ];
+        });
+
+        return response()->json($users);
+    }
+
+    /**
+     * Assign user to request item
+     */
+    public function assignUser(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:request_items,id',
+            'user_id' => 'required|exists:users,id'
+        ]);
+
+        $business_id = $request->session()->get('user.business_id');
+        
+        // Find the request item and verify it belongs to the current business
+        $requestItem = RequestItem::whereHas('request', function($query) use ($business_id) {
+            $query->where('business_id', $business_id);
+        })->findOrFail($request->item_id);
+
+        // Verify the user belongs to the same business
+        $user = User::whereHas('business_users', function($query) use ($business_id) {
+            $query->where('business_id', $business_id);
+        })->findOrFail($request->user_id);
+
+        // Update the assignment
+        $requestItem->assigned_to = $request->user_id;
+        $requestItem->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User assigned successfully',
+            'assigned_user' => [
+                'id' => $user->id,
+                'name' => trim($user->first_name . ' ' . $user->last_name) ?: $user->username
+            ]
+        ]);
+    }
+
+    /**
+     * Get pending quantities summary by assigned users
+     */
+    public function getPendingQtyByUsers(Request $request)
+    {
+        $business_id = $request->session()->get('user.business_id');
+        
+        // Get pending quantities grouped by assigned users
+        $pendingStats = RequestItem::whereHas('request', function($query) use ($business_id) {
+            $query->where('business_id', $business_id);
+        })
+        ->where('status', 'Pending') // Adjust status as needed
+        ->with('assignedUser')
+        ->get()
+        ->groupBy('assigned_to')
+        ->map(function($items, $userId) {
+            $user = $items->first()->assignedUser;
+            return [
+                'user_id' => $userId,
+                'user_name' => $user ? (trim($user->first_name . ' ' . $user->last_name) ?: $user->username) : 'Unassigned',
+                'total_quantity' => $items->sum('quantity'),
+                'items_count' => $items->count()
+            ];
+        });
+
+        return response()->json($pendingStats->values());
+    }
+
+    /**
+     * Get filtered request items (for AJAX)
+     */
+    public function getFilteredItems(Request $request, $requestId)
+    {
+        $business_id = $request->session()->get('user.business_id');
+
+
+        // Fetch the customer request with relationships
+        $customerRequest = CustomerRequest::where('business_id', $business_id)
+            ->with('contact:id,name', 'items', 'items.variation', 'items.variation.variation_location_details', 'items.assignedUser')
+            ->firstOrFail();
+
+        $items = $customerRequest->items;
+
+        
+        // Apply filters only if input is not empty
+
+        $assignedUser = $request->input('assigned_user');
+        $status = $request->input('status');
+
+        if ($assignedUser !== null && $assignedUser !== '') {
+            if ($assignedUser === 'unassigned') {
+                $items = $items->whereNull('assigned_to');
+            } else {
+                $items = $items->where('assigned_to', $assignedUser);
+            }
+        }
+
+        if ($status !== null && $status !== '') {
+            $items = $items->where('status', $status);
+        }
+
+
+        $currency_details = $this->transactionUtil->purchaseCurrencyDetails($business_id);
+        $productUtil=$this->productUtil;
+
+        
+        // Return filtered items as HTML
+        $html = view('sell.request.partials.items_table_rows', compact('request', 'items', 'productUtil', 'business_id'))->render();
+        
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $items->count()
+        ]);
     }
 }

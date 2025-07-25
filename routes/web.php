@@ -184,6 +184,14 @@ Route::middleware([
 
     Route::get('/contact-persons-by-location/{location_id}', [App\Http\Controllers\PurchaseController::class, 'getContactPersonsByLocation']);
 
+    // Request assignment routes
+    Route::get('/request/get-company-users', 'RequestController@getCompanyUsers')->name('request.get-company-users');
+    Route::post('/request/assign-user', 'RequestController@assignUser')->name('request.assign-user');
+
+    // New routes for filtering and summary
+    Route::get('/request/pending-qty-by-users', 'RequestController@getPendingQtyByUsers')->name('request.pending-qty-by-users');
+    Route::get('/request/{id}/filtered-items', 'RequestController@getFilteredItems')->name('request.get-filtered-items');
+
 
     // Purchase Management
     Route::prefix('/purchases')->group(function () {

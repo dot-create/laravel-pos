@@ -43,114 +43,141 @@
                 </div>
             </div>
             <hr>
-            <h2 >Items List</h2>
+            
+            <!-- Pending Quantities Summary -->
             <div class="row">
                 <div class="col-sm-12">
-                    <table class="table table-bordered table-striped ajax_view" id="" style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>@lang( 'product.product_name' )</th>
-                                <th>@lang( 'product.weight' )</th>
-                                <th>@lang( 'request.requested_quantity' )</th>
-                                <th>@lang( 'request.avaliable_stock' )</th>
-                                <th>@lang( 'request.status' )</th>
-                                <th>@lang( 'request.action' )</th>
-                                <!-- <th><i class="fa fa-trash" aria-hidden="true"></i></th> -->
-                            </tr>
-                        </thead>
-                        <tfoot>
-                            @php
-                                $row_count=0;
-                            @endphp
-                            @foreach($items as $item)
-                                @php
-                                    $row_count=$row_count+1;
-                                @endphp
-                                    <tr @if(!empty($purchase_order_line)) data-purchase_order_id="{{$purchase_order_line->transaction_id}}" @endif @if(!empty($purchase_requisition_line)) data-purchase_requisition_id="{{$purchase_requisition_line->transaction_id}}" @endif>
-                                        <td><span class="sr_number">{{$row_count}}</span></td>
-                                        <td>
-                                            
-                                            {{ $item->product->name }} ({{$item->variation->sub_sku}})
-                                            @if( $item->product->type == 'variable' )
-                                                <br/>
-                                                (<b>{{ $item->variation->product_variation->name }}</b> : {{ $item->variation->name }})
-                                            @endif
-                                        </td>
-                                        <td>
-                                        
-                                            {{ $item->product->weight==null? 'N/A': $item->product->weight}}
-                                        </td>
-                                        <td>
-                                            @if(!empty($purchase_order_line))
-                                                {!! Form::hidden('purchases[' . $row_count . '][purchase_order_line_id]', $purchase_order_line->id ); !!}
-                                            @endif
-                                            @php
-                                                $check_decimal = 'false';
-                                                if($item->product->unit->allow_decimal == 0){
-                                                    $check_decimal = 'true';
-                                                }
-                                                $quantity_value = !empty($purchase_order_line) ? $purchase_order_line->quantity : 1;
+                    <div class="box box-info">
+                        <div class="box-header">
+                            <h3 class="box-title">
+                                <i class="fa fa-users"></i> Pending Items Summary by Assigned User
+                            </h3>
+                        </div>
+                        <div class="box-body">
+                            <div id="pending-summary" class="row">
+                                <!-- Summary will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                                                $quantity_value = !empty($purchase_requisition_line) ? $purchase_requisition_line->quantity - $purchase_requisition_line->po_quantity_purchased : $quantity_value;
-                                                $max_quantity = !empty($purchase_order_line) ? $purchase_order_line->quantity - $purchase_order_line->po_quantity_purchased : 0;
+            <h2>Items List</h2>
+            
+            <!-- Filters -->
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="box box-default">
+                        <div class="box-header">
+                            <h3 class="box-title">
+                                <i class="fa fa-filter"></i> Filters
+                            </h3>
+                        </div>
+                        <div class="box-body">
+                            <form id="filterForm" class="form-inline">
+                                <div class="form-group">
+                                    <label for="filter_assigned_user">Assigned User:</label>
+                                    <select class="form-control" id="filter_assigned_user" name="assigned_user">
+                                        <option value="">All Users</option>
+                                        <option value="unassigned" {{ (request('assigned_user') == 'unassigned') ? 'selected' : '' }}>Unassigned</option>
+                                        @foreach($companyUsers as $user)
+                                            <option value="{{$user['id']}}" {{ (request('assigned_user') == $user['id']) ? 'selected' : '' }}>
+                                                {{$user['name']}}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="filter_status">Status:</label>
+                                    <select class="form-control" id="filter_status" name="status">
+                                        <option value="">All Statuses</option>
+                                        @foreach($statuses as $status)
+                                            <option value="{{$status}}" {{ (request('status') == $status) ? 'selected' : '' }}>
+                                                {{$status}}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                
+                                <button type="button" class="btn btn-primary" id="applyFilters">
+                                    <i class="fa fa-search"></i> Apply Filters
+                                </button>
+                                
+                                <button type="button" class="btn btn-default" id="clearFilters">
+                                    <i class="fa fa-times"></i> Clear
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                                                $max_quantity = !empty($purchase_requisition_line) ? $purchase_requisition_line->quantity - $purchase_requisition_line->po_quantity_purchased : $max_quantity;
-
-                                                $quantity_value = !empty($imported_data) ? $imported_data['quantity'] : $quantity_value;
-                                            @endphp
-                                            <span>{{$item->quantity}}</span>
-                                            
-                                        </td>
-                                        <td>
-                                                @php
-                                                $getValues = $productUtil->getAvaliableQty($business_id,$item->variation_id,$request->business_location_id);
-                                                $avaliabilityQty=$getValues['avaliabilityQty'];
-                                                @endphp
-                                                {{$avaliabilityQty}}
-                                        </td>
-                                        <td>
-                                            @switch($item->status)
-                                                @case('Rejected')
-                                                    <span class="label bg-red">{{$item->status}}</span>
-                                                @break
-                                                @default()
-                                                    <span class="label bg-info">{{$item->status}}</span>
-                                                @break
-                                            @endswitch
-                                            
-                                        </td>
-                                        <td>
-                                        @switch($item->status)
-                                                @case('Rejected')
-                                                    <a href="{{route('request.item.edit',$item->id)}}" class="btn btn-primary">Edit</a>
-                                                @break
-                                                @case('Pending')
-                                                    <a href="{{route('request.item.edit',$item->id)}}" class="btn btn-primary">Edit</a>
-                                                    <a href="{{route('request.item.reject',$item->id)}}" class="btn btn-danger">Reject</a>
-                                                @break
-                                                @case('stock')
-                                                    <a href="{{route('request.item.edit',$item->id)}}" class="btn btn-primary">Edit</a>
-                                                    <a href="{{route('request.item.reject',$item->id)}}" class="btn btn-danger">Reject</a>
-                                                break;
-                                                @default()
-                                                <a href="{{route('request.item.edit',$item->id)}}" class="btn btn-primary">Edit</a>
-                                                @break
-                                            @endswitch
-                                        </td>
-                                        <?php $row_count++ ;?>
-
-                                        <!-- <td><i class="fa fa-times remove_purchase_entry_row text-danger" title="Remove" style="cursor:pointer;"></i></td> -->
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="box box-primary">
+                        <div class="box-header">
+                            <h3 class="box-title">
+                                Items (<span id="items-count">{{count($items)}}</span>)
+                            </h3>
+                        </div>
+                        <div class="box-body">
+                            <table class="table table-bordered table-striped ajax_view" id="items-table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>@lang( 'product.product_name' )</th>
+                                        <th>@lang( 'product.weight' )</th>
+                                        <th>@lang( 'request.requested_quantity' )</th>
+                                        <th>@lang( 'request.avaliable_stock' )</th>
+                                        <th>@lang( 'request.status' )</th>
+                                        <th>Assigned To</th>
+                                        <th>@lang( 'request.action' )</th>
+                                        <!-- <th><i class="fa fa-trash" aria-hidden="true"></i></th> -->
                                     </tr>
-                            @endforeach
-                        </tfoot>
-                    </table>
+                                </thead>
+                                <tbody id="items-tbody">
+                                @include('sell.request.partials.items_table_rows')
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
     </div>
 </section>
+
+<!-- Assignment Modal -->
+<div class="modal fade" id="assignUserModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">Assign User</h4>
+            </div>
+            <div class="modal-body">
+                <form id="assignUserForm">
+                    <input type="hidden" id="assign_item_id" name="item_id">
+                    <div class="form-group">
+                        <label for="assign_user_id">Select User:</label>
+                        <select class="form-control" id="assign_user_id" name="user_id" required>
+                            <option value="">-- Select User --</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmAssignment">Assign</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- /.content -->
 @endsection
 
@@ -164,7 +191,156 @@
                 format: moment_date_format + ' ' + moment_time_format,
                 ignoreReadonly: true,
             });
+
+            // Load company users on page load
+            loadCompanyUsers();
+            
+            // Load pending quantities summary
+            loadPendingSummary();
+            
+            // Load initial table data
+            loadTableData();
     	});
+
+        // Load pending quantities summary
+        function loadPendingSummary() {
+            $.ajax({
+                url: '{{ route("request.pending-qty-by-users") }}',
+                type: 'GET',
+                success: function(data) {
+                    var html = '';
+                    if (data.length > 0) {
+                        data.forEach(function(item) {
+                            var badgeClass = item.user_id ? 'bg-blue' : 'bg-gray';
+                            html += '<div class="col-sm-3 col-xs-6">' +
+                                   '<div class="small-box ' + badgeClass + '">' +
+                                   '<div class="inner">' +
+                                   '<h3>' + item.total_quantity + '</h3>' +
+                                   '<p>' + item.user_name + '<br><small>' + item.items_count + ' items</small></p>' +
+                                   '</div>' +
+                                   '<div class="icon">' +
+                                   '<i class="fa fa-user"></i>' +
+                                   '</div>' +
+                                   '</div>' +
+                                   '</div>';
+                        });
+                    } else {
+                        html = '<div class="col-sm-12"><p class="text-muted">No pending items found.</p></div>';
+                    }
+                    $('#pending-summary').html(html);
+                },
+                error: function() {
+                    toastr.error('Failed to load pending summary');
+                }
+            });
+        }
+
+        // Load table data based on current filters
+        function loadTableData() {
+            var filters = {
+                assigned_user: $('#filter_assigned_user').val(),
+                status: $('#filter_status').val()
+            };
+
+            $.ajax({
+                url: '{{ route("request.get-filtered-items", $request->id) }}',
+                type: 'GET',
+                data: filters,
+                success: function(response) {
+                    if (response.success) {
+                        $('#items-tbody').html(response.html);
+                        $('#items-count').text(response.count);
+                    }
+                },
+                error: function() {
+                    toastr.error('Failed to load items');
+                }
+            });
+        }
+
+        // Handle filter application
+        $('#applyFilters').on('click', function() {
+            loadTableData();
+        });
+
+        // Handle filter clearing
+        $('#clearFilters').on('click', function() {
+            $('#filter_assigned_user').val('');
+            $('#filter_status').val('');
+            loadTableData();
+        });
+
+        // Auto-apply filters on change
+        $('#filter_assigned_user, #filter_status').on('change', function() {
+            loadTableData();
+        });
+        function loadCompanyUsers() {
+            $.ajax({
+                url: '{{ route("request.get-company-users") }}',
+                type: 'GET',
+                success: function(users) {
+                    var options = '<option value="">-- Select User --</option>';
+                    users.forEach(function(user) {
+                        options += '<option value="' + user.id + '">' + user.name + '</option>';
+                    });
+                    $('#assign_user_id').html(options);
+                },
+                error: function() {
+                    toastr.error('Failed to load users');
+                }
+            });
+        }
+
+        // Handle assign user button click
+        $(document).on('click', '.assign-user, .change-assignment', function() {
+            var itemId = $(this).closest('.assigned-user-section').data('item-id');
+            $('#assign_item_id').val(itemId);
+            $('#assignUserModal').modal('show');
+        });
+
+        // Handle assignment confirmation
+        $('#confirmAssignment').on('click', function() {
+            var formData = {
+                item_id: $('#assign_item_id').val(),
+                user_id: $('#assign_user_id').val(),
+                _token: '{{ csrf_token() }}'
+            };
+
+            if (!formData.user_id) {
+                toastr.error('Please select a user');
+                return;
+            }
+
+            $.ajax({
+                url: '{{ route("request.assign-user") }}',
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        // Update the UI
+                        var assignedSection = $('.assigned-user-section[data-item-id="' + formData.item_id + '"]');
+                        var newHtml = '<span class="assigned-user-name">' + 
+                                     response.assigned_user.name + 
+                                     '</span> ' +
+                                     '<button class="btn btn-xs btn-default change-assignment" title="Change Assignment">' +
+                                     '<i class="fa fa-edit"></i>' +
+                                     '</button>';
+                        assignedSection.html(newHtml);
+                        
+                        $('#assignUserModal').modal('hide');
+                        toastr.success(response.message);
+                        
+                        // Refresh the summary and table data
+                        loadPendingSummary();
+                        loadTableData();
+                    }
+                },
+                error: function() {
+                    toastr.error('Failed to assign user');
+                }
+            });
+        });
+
     	$(document).on('change', '.payment_types_dropdown, #location_id', function(e) {
 		    var default_accounts = $('select#location_id').length ? 
 		                $('select#location_id')
