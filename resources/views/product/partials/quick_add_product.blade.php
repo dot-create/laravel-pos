@@ -299,6 +299,8 @@
             url: url,
             dataType: 'json',
             data: formData, // $(form).serialize(),
+            contentType: false,     // important
+            processData: false,     // important
             success: function(data){
                 $('.quick_add_product_modal').modal('hide');
                 if( data.success){
