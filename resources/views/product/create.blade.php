@@ -329,14 +329,17 @@
                   {!! Form::text('product_racks[' . $id . '][position]', !empty($rack_details[$id]['position']) ? $rack_details[$id]['position'] : null, ['class' => 'form-control', 'placeholder' => __('lang_v1.position')]); !!}
                 @endif
 
-                {!! Form::label('net_table',  __('Net Table') . ':') !!}
+                {!! Form::label('net_table', __('Net Table') . ':') !!}
                 <div class="form-group">
-                  {!! Form::label('storage_location_id', __('product_racks.location') . ':*') !!}
-                  {!! Form::select('product_racks[' . $id . '][storage_location_id]', $storageLocations[$id], !empty($rack_details[$id]['storage_location_id']) ? $rack_details[$id]['storage_location_id'] : null, [
-                    'class' => 'form-control',
-                    'placeholder' => __('messages.please_select')
-                  ]) !!}
-
+                    {!! Form::select(
+                        'product_racks[' . $id . '][storage_location_id]',
+                        isset($storageLocations[$id]) && is_array($storageLocations[$id]) ? $storageLocations[$id] : [],
+                        !empty($rack_details[$id]['storage_location_id']) ? $rack_details[$id]['storage_location_id'] : null,
+                        [
+                            'class' => 'form-control',
+                            'placeholder' => __('messages.please_select')
+                        ]
+                    ) !!}
                 </div>
 
 

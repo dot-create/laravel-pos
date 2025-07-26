@@ -289,13 +289,16 @@
       submitHandler: function (form) {
         
         var form = $("form#quick_add_product_form");
+
+        var formData = new FormData(form[0]);
+
         var url = form.attr('action');
         form.find('button[type="submit"]').attr('disabled', true);
         $.ajax({
             method: "POST",
             url: url,
             dataType: 'json',
-            data: $(form).serialize(),
+            data: formData, // $(form).serialize(),
             success: function(data){
                 $('.quick_add_product_modal').modal('hide');
                 if( data.success){

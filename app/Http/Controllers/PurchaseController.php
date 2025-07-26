@@ -519,8 +519,14 @@ class PurchaseController extends Controller
 
 
         $business_id = request()->session()->get('user.business_id');
+        $key = 'id';
 
-        $request = CustomerRequest::where('business_id', $business_id)
+        if ($id == 'draft' || $id == 'drafts' || $id == 'drafts_list' || $id == 'items' ) {
+            $id = $business_id;
+            $key = 'business_id';
+        }
+
+        $request = CustomerRequest::where($key, $id)
                 ->with('contact:id,name','items','items.variation','items.variation.variation_location_details', 'items.assignedUser') // Load contact name
                 ->firstOrFail();
         $business_locations = BusinessLocation::forDropdown($business_id,false,true);
@@ -565,7 +571,7 @@ class PurchaseController extends Controller
         });
         
         // Get unique statuses for status filter
-        $statuses = RequestItem::where('request_id', $request->id)
+        $statuses = RequestItem::where('request_id', $id)
                     ->select('status')
                     ->distinct()
                     ->pluck('status');

@@ -105,5 +105,10 @@ return [
     'representative_name_max' => 'Representative name may not be greater than 255 characters',
     'representative_name_string' => 'Representative name must be a string',
     'contact_person' => 'Contact Person',
-
+    'mark_as_dispute' => 'Move to Dispute',
+    'dispute_quote' => 'Dispute Quote',
+    'dispute_quote_success' => 'Quote moved to dispute list successfully.', 
+    'quotation_number' => 'Quotation Number',
+    'quotation_date' => 'Quotation Date',
+    'quotation_status' => 'Quotation Status',   
 ];

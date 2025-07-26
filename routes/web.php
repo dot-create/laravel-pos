@@ -192,6 +192,7 @@ Route::middleware([
     Route::get('/request/pending-qty-by-users', 'RequestController@getPendingQtyByUsers')->name('request.pending-qty-by-users');
     Route::get('/request/{id}/filtered-items', 'RequestController@getFilteredItems')->name('request.get-filtered-items');
 
+    Route::get('request/quote/{id}/dispute', 'RequestController@markAsDispute')->name('request.quote.dispute');
 
     // Purchase Management
     Route::prefix('/purchases')->group(function () {

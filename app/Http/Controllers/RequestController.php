@@ -730,6 +730,9 @@ class RequestController extends Controller
             $acceptUrl = route('request.quote.accept', [$request->id]);
             $rejectUrl = route('request.quote.reject', [$request->id]);
             $printUrl=route('request.quote.print', [$request->id]);
+
+            $disputeUrl = route('request.quote.dispute', [$request->id]);
+
     
             $actionBtn = '<div class="btn-group">
                             <button type="button" class="btn btn-info dropdown-toggle btn-xs" 
@@ -751,6 +754,9 @@ class RequestController extends Controller
                                 <i class="fas fa-times"></i> ' . __("messages.reject") . '</a></li>';
                 $actionBtn.='<li><a href="' .$printUrl . '" target="_blank"><i class="fas fa-print" aria-hidden="true"></i> ' . __("lang_v1.download_pdf") . '</a></li>';
             // }
+            $actionBtn .= '<li><a href="' . $disputeUrl . '" class="mark-dispute">
+                  <i class="fas fa-exclamation-triangle"></i> ' . __("request.mark_as_dispute") . '</a></li>';
+
             
             $actionBtn .= '</ul></div>';
     
@@ -778,6 +784,7 @@ class RequestController extends Controller
             return DataTables::of($filteredItems)
                 
                 ->addIndexColumn() // Adds Sr#
+                ->addColumn('ref_no', fn($row) => $row->request_reference)
                 ->addColumn('date', fn($row) => $row->created_at ?? 'N/A')
                 ->addColumn('contact', fn($row) => $row->contact->supplier_business_name ?? $row->contact->name)
                 ->addColumn('ref_no', fn($row) => $row->request_reference)
@@ -1507,4 +1514,14 @@ class RequestController extends Controller
             'count' => $items->count()
         ]);
     }
+
+    public function markAsDispute($id)
+    {
+        $quote = CustomerRequest::findOrFail($id);
+        $quote->status = 'DisputeQuote';
+        $quote->save();
+
+        return back()->with('status', 'Quote moved to dispute list successfully.');
+    }
+
 }

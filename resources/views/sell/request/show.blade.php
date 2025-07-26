@@ -199,7 +199,7 @@
             loadPendingSummary();
             
             // Load initial table data
-            loadTableData();
+            loadTableData(false);
     	});
 
         // Load pending quantities summary
@@ -236,38 +236,44 @@
         }
 
         // Load table data based on current filters
-        function loadTableData() {
-            var filters = {
-                assigned_user: $('#filter_assigned_user').val(),
-                status: $('#filter_status').val()
-            };
+        function loadTableData(applyFilters = false) {
+            let filters = {};
 
-            $.ajax({
-                url: '{{ route("request.get-filtered-items", $request->id) }}',
-                type: 'GET',
-                data: filters,
-                success: function(response) {
-                    if (response.success) {
-                        $('#items-tbody').html(response.html);
-                        $('#items-count').text(response.count);
+            if (applyFilters) {
+                filters = {
+                    assigned_user: $('#filter_assigned_user').val(),
+                    status: $('#filter_status').val()
+                };
+            
+
+                $.ajax({
+                    url: '{{ route("request.get-filtered-items", $request->id) }}',
+                    type: 'GET',
+                    data: filters,
+                    success: function(response) {
+                        if (response.success) {
+                            $('#items-tbody').html(response.html);
+                            $('#items-count').text(response.count);
+                        }
+                    },
+                    error: function() {
+                        toastr.error('Failed to load items');
                     }
-                },
-                error: function() {
-                    toastr.error('Failed to load items');
-                }
-            });
+                });
+            }
         }
+
 
         // Handle filter application
         $('#applyFilters').on('click', function() {
-            loadTableData();
+            loadTableData(true);
         });
 
         // Handle filter clearing
         $('#clearFilters').on('click', function() {
             $('#filter_assigned_user').val('');
             $('#filter_status').val('');
-            loadTableData();
+            loadTableData(false);
         });
 
         // Auto-apply filters on change

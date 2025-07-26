@@ -36,6 +36,7 @@
         <table class="table table-bordered table-striped ajax_view" id="quote_dispute_table" style="width: 100%;">
             <thead>
                 <tr>
+                    <th>Date</th>
                     <th>Contact</th>
                     <th>@lang('request.ref_no')</th>
                     <th>@lang('request.status')</th>
