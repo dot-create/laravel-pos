@@ -1083,14 +1083,19 @@ class ProductUtil extends Util
         }
 
         $racks = $query->get()->mapWithKeys(function ($item) {
-            return [
-                $item->storageLocation->location_id => [
-                    'rack' => $item->storageLocation->rack,
-                    'row' => $item->storageLocation->row,
-                    'position' => $item->storageLocation->position
-                ]
-            ];
+            if ($item->storageLocation) {
+                return [
+                    $item->storageLocation->location_id => [
+                        'rack' => $item->storageLocation->rack,
+                        'row' => $item->storageLocation->row,
+                        'position' => $item->storageLocation->position
+                    ]
+                ];
+            }
+
+            return []; // Skip this item
         });
+
 
         return $racks->toArray();
     }
