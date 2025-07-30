@@ -1,3 +1,4 @@
+{{-- Enhanced expense/index.blade.php --}}
 @extends('layouts.app')
 @section('title', __('expense.expenses'))
 
@@ -50,12 +51,21 @@
                     </div>
                 </div>
 
+                {{-- Enhanced Date Filters --}}
                 <div class="col-md-3">
                     <div class="form-group">
-                        {!! Form::label('expense_date_range', __('report.date_range') . ':') !!}
+                        {!! Form::label('expense_date_range', __('Creation Date Range') . ':') !!}
                         {!! Form::text('date_range', null, ['placeholder' => __('lang_v1.select_a_date_range'), 'class' => 'form-control', 'id' => 'expense_date_range', 'readonly']); !!}
                     </div>
                 </div>
+                
+                <div class="col-md-3">
+                    <div class="form-group">
+                        {!! Form::label('expense_payment_date_range', __('Payment Date Range') . ':') !!}
+                        {!! Form::text('payment_date_range', null, ['placeholder' => __('lang_v1.select_a_date_range'), 'class' => 'form-control', 'id' => 'expense_payment_date_range', 'readonly']); !!}
+                    </div>
+                </div>
+                
                 <div class="col-md-3">
                     <div class="form-group">
                         {!! Form::label('expense_payment_status',  __('purchase.payment_status') . ':') !!}
@@ -71,8 +81,20 @@
                 @can('expense.add')
                     @slot('tool')
                         <div class="box-tools">
-                            <a class="btn btn-block btn-primary" href="{{action('ExpenseController@create')}}">
-                            <i class="fa fa-plus"></i> @lang('messages.add')</a>
+                            <button id="open_expense_modal" class="btn btn-primary">
+                                <i class="fa fa-plus"></i> @lang('messages.add')
+                            </button>
+                            
+                            {{-- Export buttons --}}
+                            <div class="btn-group" style="margin-left: 10px;">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
+                                    <i class="fa fa-download"></i> Export <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu" role="menu">
+                                    <li><a href="#" id="export_excel"><i class="fa fa-file-excel-o"></i> Excel</a></li>
+                                    <li><a href="#" id="export_pdf"><i class="fa fa-file-pdf-o"></i> PDF</a></li>
+                                </ul>
+                            </div>
                         </div>
                     @endslot
                 @endcan
@@ -88,23 +110,24 @@
                                 <th>@lang('product.sub_category')</th>
                                 <th>@lang('business.location')</th>
                                 <th>@lang('sale.payment_status')</th>
-                                <th>@lang('product.tax')</th>
+                                <th>@lang('Tax Details')</th>
                                 <th>@lang('sale.total_amount')</th>
-                                <th>@lang('purchase.payment_due')
+                                <th>@lang('purchase.payment_due')</th>
                                 <th>@lang('expense.expense_for')</th>
                                 <th>@lang('contact.contact')</th>
+                                <th>@lang('Contact Company')</th>
                                 <th>@lang('expense.expense_note')</th>
                                 <th>@lang('lang_v1.added_by')</th>
+                                <th>@lang('Last Payment Date')</th>
                             </tr>
                         </thead>
                         <tfoot>
                             <tr class="bg-gray font-17 text-center footer-total">
-                                <td colspan="7"><strong>@lang('sale.total'):</strong></td>
+                                <td colspan="8"><strong>@lang('sale.total'):</strong></td>
                                 <td class="footer_payment_status_count"></td>
-                                <td></td>
                                 <td class="footer_expense_total"></td>
                                 <td class="footer_total_due"></td>
-                                <td colspan="4"></td>
+                                <td colspan="6"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -114,16 +137,20 @@
     </div>
 
 </section>
-<!-- /.content -->
-<!-- /.content -->
-<div class="modal fade payment_modal" tabindex="-1" role="dialog" 
+
+<div id="expense_modal_container"></div>
+
+<!-- Payment Modal -->
+<div class="modal fade add_payment_modal" tabindex="-1" role="dialog" 
     aria-labelledby="gridSystemModalLabel">
 </div>
 
 <div class="modal fade edit_payment_modal" tabindex="-1" role="dialog" 
     aria-labelledby="gridSystemModalLabel">
 </div>
+
 @stop
+
 @section('javascript')
- <script src="{{ asset('js/payment.js?v=' . $asset_v) }}"></script>
+<script src="{{ asset('js/payment.js?v=' . $asset_v) }}"></script>
 @endsection

@@ -1,5 +1,5 @@
 <div class="modal fade" id="expense_modal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog" role="document" style="max-width: 800px; width: 100%;">
         <div class="modal-content">
             {!! Form::open(['url' => action('ExpenseController@store'), 'method' => 'post', 'id' => 'add_expense_modal_form', 'files' => true ]) !!}
             <div class="modal-header">
@@ -24,7 +24,13 @@
                     <div class="col-sm-6">
                         <div class="form-group">
                             {!! Form::label('expense_category_id', __('expense.expense_category').':') !!}
-                            {!! Form::select('expense_category_id', $expense_categories, null, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select')]); !!}
+                            {!! Form::select('expense_category_id', $expense_categories, null, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select'), 'id' => 'expense_category_id']); !!}
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            {!! Form::label('expense_sub_category_id', __('product.sub_category') . ':') !!}
+                            {!! Form::select('expense_sub_category_id', $sub_categories, null, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select'), 'id' => 'expense_sub_category_id']); !!}
                         </div>
                     </div>
                     <div class="clearfix"></div>
@@ -90,7 +96,13 @@
                     <div class="col-sm-6">
                         <div class="form-group">
                             {!! Form::label('expense_for', __('expense.expense_for').':') !!} @show_tooltip(__('tooltip.expense_for'))
-                            {!! Form::select('expense_for', $users, null, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select')]); !!}
+                            {!! Form::select('expense_for', $users, null, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select'), 'id' => 'expense_for']); !!}
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            {!! Form::label('contact_id', __('lang_v1.expense_for_contact').':') !!}
+                            {!! Form::select('contact_id', $contacts, null, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select'), 'id' => 'contact_id']); !!}
                         </div>
                     </div>
                     <div class="col-sm-6">
@@ -105,6 +117,77 @@
                         <div class="form-group">
                             {!! Form::label('expense_additional_notes', __('expense.expense_note') . ':') !!}
                             {!! Form::textarea('additional_notes', null, ['class' => 'form-control', 'rows' => 3, 'id' => 'expense_additional_notes']); !!}
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-sm-6">
+                        <br>
+                        <label>
+                          {!! Form::checkbox('is_refund', 1, false, ['class' => 'input-icheck', 'id' => 'is_refund']); !!} @lang('lang_v1.is_refund')?
+                        </label>@show_tooltip(__('lang_v1.is_refund_help'))
+                    </div>
+                    <div class="col-md-6 col-sm-6">
+                        <br>
+                        <label>
+                          {!! Form::checkbox('is_purchase', 1, false, ['class' => 'input-icheck', 'id' => 'is_purchase']); !!} @lang('Is Purchase')?
+                        </label>@show_tooltip(__('Is Purchase Expense'))
+                    </div>
+                </div>
+
+                <div class="box box-primary hide" id="purchase_box_modal">
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-sm-2 text-center"></div>
+                            <div class="col-sm-8">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <span class="input-group-addon">
+                                            <i class="fa fa-search"></i>
+                                        </span>
+                                        {!! Form::text('search_purchase', null, ['class' => 'form-control', 'id' => 'search_purchase_modal', 'placeholder' => __('Search Purchase Ref')]); !!}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-2"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="table-responsive">
+                                    <table class="table table-condensed table-bordered table-th-green text-center table-striped" id="purchase_entry_table_modal">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Supplier</th>
+                                                <th>Purchase Ref</th>
+                                                <th>Puchase Expense (W/O Tax)</th>
+                                                <th>Puchase Expense (Inc Tax)</th>
+                                                <th>Main Currency Total</th>
+                                                <th><i class="fa fa-trash" aria-hidden="true"></i></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="purchase_rows_modal"></tbody>
+                                    </table>
+                                </div>
+                                <hr>
+                                <div class="pull-right col-md-5">
+                                    <table class="pull-right col-md-12">
+                                        <tbody>
+                                            <tr>
+                                                <th class="col-md-7 text-right">Total Purchases:</th>
+                                                <td class="col-md-5 text-left">
+                                                    <span id="total_quantity_modal">0.0000</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th class="col-md-7 text-right">Net Total Amount:</th>
+                                                <td class="col-md-5 text-left">
+                                                    <span id="total_subtotal_modal" class="display_currency">$ 0.0000</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <input type="hidden" id="row_count_modal" value="0">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -133,17 +216,38 @@
 </div>
 
 <script>
-    // Enhanced expense.js for better tax calculations and currency handling
-
     $(document).ready(function() {
+        // Initialize iCheck for checkboxes
+        $('input[type="checkbox"].input-icheck').iCheck({
+            checkboxClass: 'icheckbox_square-blue',
+            radioClass: 'iradio_square-blue',
+            increaseArea: '20%'
+        });
+
+        // Initialize datetime picker for modal
+        $('#expense_transaction_date').datetimepicker({
+            format: moment_date_format + ' ' + moment_time_format,
+            ignoreReadonly: true,
+            defaultDate: new Date()
+        });
+
+        // Toggle purchase section
+        $('#is_purchase').on('ifChecked', function() {
+            $('#purchase_box_modal').removeClass('hide');
+            initializePurchaseSearchModal();
+        });
+        $('#is_purchase').on('ifUnchecked', function() {
+            $('#purchase_box_modal').addClass('hide');
+            clearPurchaseDataModal();
+        });
 
         // Enhanced tax calculation system
         function calculateEnhancedTax() {
-            var amountBeforeTax = parseFloat($('#expense_amount_before_tax, #amount_before_tax').val()) || 0;
-            var taxType = $('#expense_tax_type, #tax_type').val();
-            var taxRateElement = $('#expense_tax_id, #tax_id');
+            var amountBeforeTax = parseFloat($('#expense_amount_before_tax').val()) || 0;
+            var taxType = $('#expense_tax_type').val();
+            var taxRateElement = $('#expense_tax_id');
             var taxRate = parseFloat(taxRateElement.find('option:selected').data('rate')) || 0;
-            var manualTaxValue = parseFloat($('#expense_tax_value, #tax_value').val()) || 0;
+            var manualTaxValue = parseFloat($('#expense_tax_value').val()) || 0;
 
             var taxValue = 0;
             var finalTotal = amountBeforeTax;
@@ -152,7 +256,7 @@
                 if (taxType === 'percentage' && taxRate > 0) {
                     // Calculate tax based on selected tax rate percentage
                     taxValue = (amountBeforeTax * taxRate) / 100;
-                    $('#expense_tax_value, #tax_value').val(taxValue.toFixed(2));
+                    $('#expense_tax_value').val(taxValue.toFixed(2));
                     finalTotal = amountBeforeTax + taxValue;
                     $('#tax_value_indicator').text($('#__symbol').val() || '$');
                 } else if (taxType === 'fixed') {
@@ -163,14 +267,14 @@
                 }
             }
 
-            $('#expense_final_total, #final_total').val(finalTotal.toFixed(2));
+            $('#expense_final_total').val(finalTotal.toFixed(2));
             updatePaymentDue();
         }
 
         // Tax type change handler
-        $(document).on('change', '#expense_tax_type, #tax_type', function() {
+        $(document).on('change', '#expense_tax_type', function() {
             var taxType = $(this).val();
-            var taxValueField = $('#expense_tax_value, #tax_value');
+            var taxValueField = $('#expense_tax_value');
             var indicator = $('#tax_value_indicator');
 
             if (taxType === 'percentage') {
@@ -185,34 +289,34 @@
         });
 
         // Amount before tax change
-        $(document).on('input', '#expense_amount_before_tax, #amount_before_tax', function() {
+        $(document).on('input', '#expense_amount_before_tax', function() {
             calculateEnhancedTax();
         });
 
         // Tax selection change
-        $(document).on('change', '#expense_tax_id, #tax_id', function() {
+        $(document).on('change', '#expense_tax_id', function() {
             calculateEnhancedTax();
         });
 
         // Manual tax value input (for fixed type)
-        $(document).on('input', '#expense_tax_value, #tax_value', function() {
-            if ($('#expense_tax_type, #tax_type').val() === 'fixed') {
+        $(document).on('input', '#expense_tax_value', function() {
+            if ($('#expense_tax_type').val() === 'fixed') {
                 calculateEnhancedTax();
             }
         });
 
         // Enhanced payment due calculation
         function updatePaymentDue() {
-            var finalTotal = parseFloat($('#expense_final_total, #final_total').val()) || 0;
+            var finalTotal = parseFloat($('#expense_final_total').val()) || 0;
             var paymentAmount = parseFloat($('.payment-amount').val()) || 0;
             var paymentDue = finalTotal - paymentAmount;
             var symbol = $('#__symbol').val() || '$';
 
-            $('#expense_payment_due, #payment_due').text(symbol + ' ' + paymentDue.toFixed(2));
+            $('#expense_payment_due').text(symbol + ' ' + paymentDue.toFixed(2));
 
             // Update currency display if function exists
             if (typeof __currency_convert_recursively === 'function') {
-                __currency_convert_recursively($('#expense_payment_due, #payment_due').parent());
+                __currency_convert_recursively($('#expense_payment_due').parent());
             }
         }
 
@@ -222,7 +326,7 @@
         });
 
         // Enhanced currency handling on location change
-        $(document).on('change', '#expense_location_id, #location_id', function() {
+        $(document).on('change', '#expense_location_id', function() {
             var locationId = $(this).val();
             if (locationId) {
                 $.ajax({
@@ -271,27 +375,16 @@
             }
         });
 
-        // Purchase expense handling
-        $(document).on('ifChecked', '#is_purchase', function() {
-            $('#purchase_box').removeClass('hide');
-            initializePurchaseSearch();
-        });
-
-        $(document).on('ifUnchecked', '#is_purchase', function() {
-            $('#purchase_box').addClass('hide');
-            clearPurchaseData();
-        });
-
-        // Enhanced purchase search
-        function initializePurchaseSearch() {
-            $('#search_purchase').autocomplete({
+        // Enhanced purchase search for modal
+        function initializePurchaseSearchModal() {
+            $('#search_purchase_modal').autocomplete({
                 source: function(request, response) {
                     $.ajax({
                         url: '/expenses/get_purchases',
                         dataType: 'json',
                         data: {
                             term: request.term,
-                            location_id: $('#location_id').val()
+                            location_id: $('#expense_location_id').val()
                         },
                         success: function(data) {
                             response($.map(data, function(item) {
@@ -308,7 +401,7 @@
                     });
                 },
                 select: function(event, ui) {
-                    addPurchaseRow(ui.item);
+                    addPurchaseRowModal(ui.item);
                     $(this).val('');
                     return false;
                 },
@@ -316,9 +409,9 @@
             });
         }
 
-        // Add purchase row to table
-        function addPurchaseRow(purchase) {
-            var rowCount = parseInt($('#row_count').val()) + 1;
+        // Add purchase row to modal table
+        function addPurchaseRowModal(purchase) {
+            var rowCount = parseInt($('#row_count_modal').val()) + 1;
             var currency = $('#__symbol').val() || '$';
 
             var row = '<tr>' +
@@ -331,57 +424,57 @@
                 '<td><button type="button" class="btn btn-danger btn-sm remove_purchase_entry_row"><i class="fas fa-trash"></i></button></td>' +
                 '</tr>';
 
-            $('#purchase_rows').append(row);
-            $('#row_count').val(rowCount);
-            updatePurchaseTotals();
+            $('#purchase_rows_modal').append(row);
+            $('#row_count_modal').val(rowCount);
+            updatePurchaseTotalsModal();
         }
 
-        // Remove purchase row
+        // Remove purchase row in modal
         $(document).on('click', '.remove_purchase_entry_row', function() {
             $(this).closest('tr').remove();
-            updatePurchaseTotals();
-            updateRowNumbers();
+            updatePurchaseTotalsModal();
+            updateRowNumbersModal();
         });
 
-        // Update purchase totals
-        function updatePurchaseTotals() {
-            var totalQuantity = $('#purchase_rows tr').length;
+        // Update purchase totals in modal
+        function updatePurchaseTotalsModal() {
+            var totalQuantity = $('#purchase_rows_modal tr').length;
             var totalAmount = 0;
 
             $('.sub_total').each(function() {
                 totalAmount += parseFloat($(this).val()) || 0;
             });
 
-            $('#total_quantity').text(totalQuantity);
-            $('#total_subtotal').text($('#__symbol').val() + ' ' + totalAmount.toFixed(2));
+            $('#total_quantity_modal').text(totalQuantity);
+            $('#total_subtotal_modal').text($('#__symbol').val() + ' ' + totalAmount.toFixed(2));
 
             // Update main expense total if this is a purchase expense
             if ($('#is_purchase').is(':checked')) {
-                $('#final_total').val(totalAmount.toFixed(2));
+                $('#expense_final_total').val(totalAmount.toFixed(2));
                 updatePaymentDue();
             }
         }
 
-        // Update row numbers after deletion
-        function updateRowNumbers() {
-            $('#purchase_rows tr').each(function(index) {
+        // Update row numbers in modal after deletion
+        function updateRowNumbersModal() {
+            $('#purchase_rows_modal tr').each(function(index) {
                 $(this).find('.sr_number').text(index + 1);
             });
-            $('#row_count').val($('#purchase_rows tr').length);
+            $('#row_count_modal').val($('#purchase_rows_modal tr').length);
         }
 
-        // Clear purchase data
-        function clearPurchaseData() {
-            $('#purchase_rows').empty();
-            $('#row_count').val(0);
-            $('#total_quantity').text('0');
-            $('#total_subtotal').text($('#__symbol').val() + ' 0.00');
+        // Clear purchase data in modal
+        function clearPurchaseDataModal() {
+            $('#purchase_rows_modal').empty();
+            $('#row_count_modal').val(0);
+            $('#total_quantity_modal').text('0');
+            $('#total_subtotal_modal').text($('#__symbol').val() + ' 0.00');
         }
 
         // Form validation enhancement
-        $(document).on('submit', '#add_expense_form, #add_expense_modal_form', function(e) {
-            var amountBeforeTax = parseFloat($('#expense_amount_before_tax, #amount_before_tax').val()) || 0;
-            var finalTotal = parseFloat($('#expense_final_total, #final_total').val()) || 0;
+        $(document).on('submit', '#add_expense_modal_form', function(e) {
+            var amountBeforeTax = parseFloat($('#expense_amount_before_tax').val()) || 0;
+            var finalTotal = parseFloat($('#expense_final_total').val()) || 0;
 
             if (amountBeforeTax <= 0) {
                 e.preventDefault();
@@ -390,7 +483,7 @@
                 } else {
                     alert('Please enter a valid amount before tax');
                 }
-                $('#expense_amount_before_tax, #amount_before_tax').focus();
+                $('#expense_amount_before_tax').focus();
                 return false;
             }
 
@@ -405,44 +498,30 @@
             }
         });
 
-        // Initialize on page load
-        if ($('#expense_tax_type, #tax_type').length) {
-            var initialTaxType = $('#expense_tax_type, #tax_type').val();
-            if (initialTaxType === 'fixed') {
-                $('#expense_tax_value, #tax_value').prop('readonly', false);
-                $('#tax_value_indicator').text($('#__symbol').val() || '$');
-            }
+        // Initialize tax type on page load
+        var initialTaxType = $('#expense_tax_type').val();
+        if (initialTaxType === 'fixed') {
+            $('#expense_tax_value').prop('readonly', false);
+            $('#tax_value_indicator').text($('#__symbol').val() || '$');
         }
 
         // Auto-calculate on form load if values exist
-        if ($('#expense_amount_before_tax, #amount_before_tax').val()) {
+        if ($('#expense_amount_before_tax').val()) {
             calculateEnhancedTax();
         }
 
-        // Enhanced duplicate expense handling
-        if (window.location.search.includes('d=')) {
-            setTimeout(function() {
-                // Update currency for duplicated expense
-                $('#expense_location_id, #location_id').trigger('change');
-                // Reset dates to current
-                var currentDate = moment().format(moment_date_format + ' ' + moment_time_format);
-                $('#expense_transaction_date').val(currentDate);
-            }, 1000);
+        // Helper function for currency formatting
+        function formatCurrency(amount, symbol) {
+            symbol = symbol || $('#__symbol').val() || '$';
+            return symbol + ' ' + parseFloat(amount).toFixed(2);
         }
 
+        // Helper function for number parsing
+        function parseAmount(value) {
+            if (typeof value === 'string') {
+                return parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+            }
+            return parseFloat(value) || 0;
+        }
     });
-
-    // Helper function for currency formatting
-    function formatCurrency(amount, symbol) {
-        symbol = symbol || $('#__symbol').val() || '$';
-        return symbol + ' ' + parseFloat(amount).toFixed(2);
-    }
-
-    // Helper function for number parsing
-    function parseAmount(value) {
-        if (typeof value === 'string') {
-            return parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
-        }
-        return parseFloat(value) || 0;
-    }
 </script>

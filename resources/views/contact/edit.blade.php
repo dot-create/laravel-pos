@@ -222,55 +222,139 @@
                 </div>
           </div>
         @endif
-          <div class="col-md-12">
-              <div class="row">
-                  <div class="col-md-3">
-                      <label>Representative Name:</label>
-                      <input type="text" class="form-control" placeholder="Representative Name" id="representative_name" name="representative_name" value="">
-                  </div>
-                  <div class="col-md-3">
-                      <label>Representative Phone:</label>
-                      <input type="text" class="form-control" placeholder="Representative Phone Number" id="representative_phone" name="representative_phone" value="">
-                  </div>
-                  <div class="col-md-3">
-                      <label>Representative Email:</label>
-                      <input type="text" class="form-control" placeholder="Representative Email" id="representative_email" name="representative_email" value="">
-                  </div>
-                  <div class="col-md-3">
-                      <label> </label><br>
-                      <button type="button" class="btn btn-add-more-contact btn-primary">Add Contact</button>
-                  </div>
-              </div>
+        
+        <div class="col-md-12"
+            style="box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+                padding: 10px;
+                margin: 10px 10px 30px;
+                width: 98%;
+                border-radius: 7px;">
 
-          </div>
-          <div class="col-md-12">
-              <table class="table table-striped">
-                  <thead>
-                  <th>ID</th>
-                  <th>Representative Name:</th>
-                  <th>Representative Phone Number</th>
-                  <th>Representative Email</th>
-                  <th>Actions</th>
-                  </thead>
-                  <tbody id="contact_person_body">
-                  @foreach($contact->contactPersons as $person)
-                      <tr data-id="{{$person->id}}" >
-                          <td>{{$person->id}}</td>
-                          <td>{{$person->representative_name}}</td>
-                          <td>{{$person->representative_phone}}</td>
-                          <td>{{$person->representative_email}}</td>
-                          <td>
-                              <a class="contact-person-edit" data-dt="{{json_encode($person)}}" data-id="{{$person->id}}" href="#"><i class="fa fa-pencil-alt"></i></a>
-                              <a class="contact-person-delete" href="#" data-id="{{$person->id}}"><i class="fa fa-trash"></i></a>
+            <fieldset class="border p-3 mb-3">
+                <legend style="color: #ff9e9e" class="w-auto px-2">Representative Contact Details</legend>
 
-                          </td>
-                      </tr>
-                  @endforeach
+                <div class="row align-items-end"
+                    style="padding: 10px;
+                            width: 98%;
+                            border-radius: 7px;">
 
+                    <!-- Representative Name -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {!! Form::label('representative_name', 'Name:') !!}
+                            <div class="input-group">
+                                <span class="input-group-addon">
+                                    <i class="fa fa-user"></i>
+                                </span>
+                                {!! Form::text('representative_name', null, ['class' => 'form-control', 'placeholder' => 'Representative Name']) !!}
+                            </div>
+                        </div>
+                    </div>
 
-                  </tbody>
-              </table>
-          </div>
+                    <!-- Representative Position -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {!! Form::label('representative_position', 'Position:') !!}
+                            <div class="input-group">
+                                <span class="input-group-addon">
+                                    <i class="fa fa-briefcase"></i>
+                                </span>
+                                {!! Form::text('representative_position', null, ['class' => 'form-control', 'placeholder' => 'Position']) !!}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Representative Phone Number -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {!! Form::label('representative_phone', 'Phone Number:') !!}
+                            <div class="input-group">
+                                <span class="input-group-addon">
+                                    <i class="fa fa-phone"></i>
+                                </span>
+                                {!! Form::text('representative_phone', null, ['class' => 'form-control', 'placeholder' => 'Landline Number']) !!}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Representative Mobile Number -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {!! Form::label('representative_mobile', 'Mobile Number:') !!}
+                            <div class="input-group">
+                                <span class="input-group-addon">
+                                    <i class="fa fa-mobile-alt"></i>
+                                </span>
+                                {!! Form::text('representative_mobile', null, ['class' => 'form-control', 'placeholder' => 'Mobile Number']) !!}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Representative Email -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {!! Form::label('representative_email', 'Email:') !!}
+                            <div class="input-group">
+                                <span class="input-group-addon">
+                                    <i class="fa fa-envelope"></i>
+                                </span>
+                                {!! Form::email('representative_email', null, ['class' => 'form-control', 'placeholder' => 'Email']) !!}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Contact Button -->
+                    <div class="col-md-4" style="display: flex; justify-content: flex-end; margin-top: 25px;">
+                        <button type="button" class="btn btn-primary btn-add-more-contact">
+                            <i class="fa fa-plus-circle"></i> Add Contact
+                        </button>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Table with contact list -->
+            <div class="col-md-12"
+                style="box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+                    padding: 10px;
+                    margin: 10px;
+                    width: 98%;
+                    border-radius: 7px;">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Position</th>
+                            <th>Phone</th>
+                            <th>Mobile</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contact_person_body">
+                        @foreach($contact->contactPersons as $person)
+                            <tr data-id="{{$person->id}}">
+                                <td>{{$person->id}}</td>
+                                <td>{{$person->representative_name}}</td>
+                                <td>{{$person->representative_position}}</td>
+                                <td>{{$person->representative_phone}}</td>
+                                <td>{{$person->representative_mobile}}</td>
+                                <td>{{$person->representative_email}}</td>
+                                <td>
+                                    <a class="contact-person-edit" data-dt="{{json_encode($person)}}" data-id="{{$person->id}}" href="#">
+                                        <i class="fa fa-pencil-alt"></i>
+                                    </a>
+                                    <a class="contact-person-delete" href="#" data-id="{{$person->id}}">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="col-md-12">
             <button type="button" class="btn btn-primary center-block more_btn" data-target="#more_div">@lang('lang_v1.more_info') <i class="fa fa-chevron-down"></i></button>
         </div>

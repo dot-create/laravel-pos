@@ -464,6 +464,12 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::put('update-sales-orders/{id}/status', 'SalesOrderController@postEditSalesOrderStatus');
     Route::get('reports/activity-log', 'ReportController@activityLog');
     Route::get('user-location/{latlng}', 'HomeController@getUserLocation');
+
+    // Custom API routes
+    Route::get('/contact-persons-by-location/{location_id}', [App\Http\Controllers\PurchaseController::class, 'getContactPersonsByLocation']);
+    Route::get('purchases/edit-received-modal/{id}', 'PurchaseController@editReceivedQtyModal')->name('purchase.edit_received_modal');
+    Route::post('purchases/update-received/{id}', 'PurchaseController@updateReceivedQty')->name('purchase.update_received_qty');
+
 });
 
 

@@ -23,6 +23,10 @@ use App\Utils\CashRegisterUtil;
 
 class ExpenseController extends Controller
 {
+    public $transactionUtil;
+    public $moduleUtil;
+    public $dummyPaymentLine;
+    public $cashRegisterUtil;
     /**
     * Constructor
     *
@@ -43,6 +47,9 @@ class ExpenseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    /**
+     * Enhanced index method with better currency handling and payment date filter
+     */
     public function index()
     {
         if (!auth()->user()->can('all_expense.access') && !auth()->user()->can('view_own_expense')) {
@@ -53,22 +60,12 @@ class ExpenseController extends Controller
             $business_id = request()->session()->get('user.business_id');
             $expenses = Transaction::leftJoin('expense_categories AS ec', 'transactions.expense_category_id', '=', 'ec.id')
                             ->leftJoin('expense_categories AS esc', 'transactions.expense_sub_category_id', '=', 'esc.id')
-                            ->join(
-                                'business_locations AS bl',
-                                'transactions.location_id',
-                                '=',
-                                'bl.id'
-                            )
+                            ->join('business_locations AS bl', 'transactions.location_id', '=', 'bl.id')
                             ->leftJoin('tax_rates as tr', 'transactions.tax_id', '=', 'tr.id')
                             ->leftJoin('users AS U', 'transactions.expense_for', '=', 'U.id')
                             ->leftJoin('users AS usr', 'transactions.created_by', '=', 'usr.id')
                             ->leftJoin('contacts AS c', 'transactions.contact_id', '=', 'c.id')
-                            ->leftJoin(
-                                'transaction_payments AS TP',
-                                'transactions.id',
-                                '=',
-                                'TP.transaction_id'
-                            )
+                            ->leftJoin('transaction_payments AS TP', 'transactions.id', '=', 'TP.transaction_id')
                             ->where('transactions.business_id', $business_id)
                             ->whereIn('transactions.type', ['expense', 'expense_refund'])
                             ->select(
@@ -82,6 +79,9 @@ class ExpenseController extends Controller
                                 'payment_status',
                                 'additional_notes',
                                 'final_total',
+                                'transactions.amount_before_tax',
+                                'transactions.tax_type',
+                                'transactions.tax_value',
                                 'transactions.is_recurring',
                                 'transactions.recur_interval',
                                 'transactions.recur_interval_type',
@@ -95,11 +95,31 @@ class ExpenseController extends Controller
                                 DB::raw('SUM(TP.amount) as amount_paid'),
                                 DB::raw("CONCAT(COALESCE(usr.surname, ''),' ',COALESCE(usr.first_name, ''),' ',COALESCE(usr.last_name,'')) as added_by"),
                                 'transactions.recur_parent_id',
-                                'c.name as contact_name',
-                                'transactions.type'
+                                DB::raw("CONCAT(COALESCE(c.name, ''), ' - ', COALESCE(c.supplier_business_name, ''), '(', COALESCE(c.contact_id, ''), ')') as contact_name"),
+                                'c.supplier_business_name as contact_company',
+                                'transactions.type',
+                                DB::raw('MAX(TP.paid_on) as last_payment_date')
                             )
                             ->with(['recurring_parent'])
                             ->groupBy('transactions.id');
+
+            // Enhanced filters
+            if (!empty(request()->start_date) && !empty(request()->end_date)) {
+                 // Convert from d-m-Y to Y-m-d
+                $start = \Carbon\Carbon::createFromFormat('d-m-Y', request()->start_date)->format('Y-m-d g:i:s');
+                $end = \Carbon\Carbon::createFromFormat('d-m-Y', request()->end_date)->format('Y-m-d g:i:s');
+
+                $expenses->whereBetween('transaction_date', [$start, $end]);
+            }
+
+            // Payment date filter
+            if (!empty(request()->payment_start_date) && !empty(request()->payment_end_date)) {
+                // Convert from d-m-Y to Y-m-d
+                $payment_start = \Carbon\Carbon::createFromFormat('d-m-Y', request()->payment_start_date)->format('Y-m-d g:i:s');
+                $payment_end = \Carbon\Carbon::createFromFormat('d-m-Y', request()->payment_end_date)->format('Y-m-d g:i:s');
+
+                $expenses->whereBetween('TP.paid_on', [$payment_start, $payment_end]);
+            }
 
             //Add condition for expense for,used in sales representative expense report & list of expense
             if (request()->has('expense_for')) {
@@ -109,8 +129,8 @@ class ExpenseController extends Controller
                 }
             }
 
-            if (request()->has('contact_id')) {
-                $contact_id = request()->get('contact_id');
+            if (request()->has('expense_contact_filter')) {
+                $contact_id = request()->get('expense_contact_filter');
                 if (!empty($contact_id)) {
                     $expenses->where('transactions.contact_id', $contact_id);
                 }
@@ -139,99 +159,38 @@ class ExpenseController extends Controller
                     $expenses->where('transactions.expense_sub_category_id', $expense_sub_category_id);
                 }
             }
-
-            //Add condition for start and end date filter, uses in sales representative expense report & list of expense
-            if (!empty(request()->start_date) && !empty(request()->end_date)) {
-                $start = request()->start_date;
-                $end =  request()->end_date;
-                $expenses->whereDate('transaction_date', '>=', $start)
-                        ->whereDate('transaction_date', '<=', $end);
-            }
-
+            
             $permitted_locations = auth()->user()->permitted_locations();
             if ($permitted_locations != 'all') {
                 $expenses->whereIn('transactions.location_id', $permitted_locations);
-            }
-
-            //Add condition for payment status for the list of expense
-            if (request()->has('payment_status')) {
-                $payment_status = request()->get('payment_status');
-                if (!empty($payment_status)) {
-                    $expenses->where('transactions.payment_status', $payment_status);
-                }
             }
 
             $is_admin = $this->moduleUtil->is_admin(auth()->user(), $business_id);
             if (!$is_admin && !auth()->user()->can('all_expense.access')) {
                 $user_id = auth()->user()->id;
                 $expenses->where(function ($query) use ($user_id) {
-                        $query->where('transactions.created_by', $user_id)
-                        ->orWhere('transactions.expense_for', $user_id);
-                    });
+                    $query->where('transactions.created_by', $user_id)
+                          ->orWhere('transactions.expense_for', $user_id);
+                });
             }
             
             return Datatables::of($expenses)
-                ->addColumn(
-                    'action',
-                    '<div class="btn-group">
-                        <button type="button" class="btn btn-info dropdown-toggle btn-xs" 
-                            data-toggle="dropdown" aria-expanded="false"> @lang("messages.actions")<span class="caret"></span><span class="sr-only">Toggle Dropdown
-                                </span>
-                        </button>
-                    <ul class="dropdown-menu dropdown-menu-left" role="menu">
-                    @if(auth()->user()->can("expense.edit"))
-                        <li><a href="{{action(\'ExpenseController@edit\', [$id])}}"><i class="glyphicon glyphicon-edit"></i> @lang("messages.edit")</a></li>
-                        <li><a href="{{ action(\'ExpenseController@create\', ["d" => $id]) }}"><i class="fa fa-copy"></i> Duplicate Expense </a></li>
-                    @endif
-                    @if($document)
-                        <li><a href="{{ url(\'uploads/documents/\' . $document)}}" 
-                        download=""><i class="fa fa-download" aria-hidden="true"></i> @lang("purchase.download_document")</a></li>
-                        @if(isFileImage($document))
-                            <li><a href="#" data-href="{{ url(\'uploads/documents/\' . $document)}}" class="view_uploaded_document"><i class="fas fa-file-image" aria-hidden="true"></i>@lang("lang_v1.view_document")</a></li>
-                        @endif
-                    @endif
-                    @if(auth()->user()->can("expense.delete"))
-                        <li>
-                        <a href="#" data-href="{{action(\'ExpenseController@destroy\', [$id])}}" class="delete_expense"><i class="glyphicon glyphicon-trash"></i> @lang("messages.delete")</a></li>
-                    @endif
-                    <li class="divider"></li> 
-                    @if($payment_status != "paid")
-                        <li><a href="{{action("TransactionPaymentController@addPayment", [$id])}}" class="add_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true"></i> @lang("purchase.add_payment")</a></li>
-                    @endif
-                    <li><a href="{{action("TransactionPaymentController@show", [$id])}}" class="view_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true" ></i> @lang("purchase.view_payments")</a></li>
-                    </ul></div>'
-                )
-                ->removeColumn('id')
-                ->editColumn( 'final_total', function($row) {
-                    // return json_encode($row->created_at);
-                    $currency = Currency::where("id", $row->currency_id)->first();
-                    $html = '<span class="display_currency final-total" data-currency_symbol="true" data-currency="'.$currency->symbol.'" data-orig-value="';
-                    if($row->type=="expense_refund"){
-                        $html .= -1 * $row->final_total;
-                    }else{
-                        $html .= $row->final_total;
-                    } 
-                    $html .= '">';
-                    if($row->type=="expense_refund") {
-                        $html .= "-";
-                    }
-                    $dateToCheck = $row->created_at;
-                    $compareDate = "2023-09-07";
-                    // $final_total =  strtotime($dateToCheck) > strtotime($compareDate) ? number_format($row->final_total / $currency->rate, 2) : number_format($row->final_total, 2);
-                    // $final_total =  number_format($row->final_total / $currency->rate, 2); CBY Bilal
-
-                    $final_total =  strtotime($dateToCheck) > strtotime($compareDate) ? number_format($row->final_total , 2) : number_format($row->final_total, 2);
-                    $final_total =  number_format($row->final_total , 2);
-                    
-                    $html .= $currency->symbol . " " . $final_total ."</span>";
-                    return $html;
+                ->addColumn('action', function($row) {
+                    // Enhanced action buttons with proper currency handling
+                    return $this->getActionButtons($row);
                 })
-                ->editColumn('transaction_date', '{{@format_datetime($transaction_date)}}')
-                ->editColumn(
-                    'payment_status',
-                    '<a href="{{ action("TransactionPaymentController@show", [$id])}}" class="view_payment_modal payment-status" data-orig-value="{{$payment_status}}" data-status-name="{{__(\'lang_v1.\' . $payment_status)}}"><span class="label @payment_status($payment_status)">{{__(\'lang_v1.\' . $payment_status)}}
-                        </span></a>'
-                )
+                ->editColumn('final_total', function($row) {
+                    $currency = Currency::where("id", $row->currency_id)->first();
+                    $display_amount = $row->final_total;
+                    
+                    // Handle currency conversion consistently
+                    if ($row->type == "expense_refund") {
+                        $display_amount = -1 * $display_amount;
+                    }
+                    
+                    return '<span class="display_currency final-total" data-currency_symbol="true" data-currency="'.$currency->symbol.'" data-orig-value="'.$display_amount.'">' 
+                           . $currency->symbol . ' ' . number_format($display_amount, 2) . '</span>';
+                })
                 ->addColumn('payment_due', function ($row) {
                     $currency = Currency::where("id", $row->currency_id)->first();
                     $dateToCheck = $row->created_at;
@@ -280,29 +239,32 @@ class ExpenseController extends Controller
 
                     return $ref_no;
                 })
-                ->rawColumns(['final_total', 'action', 'payment_status', 'payment_due', 'ref_no', 'recur_details'])
+                ->addColumn('tax_details', function($row) {
+                    if ($row->amount_before_tax) {
+                        $tax_info = 'Before Tax: ' . number_format($row->amount_before_tax, 2);
+                        if ($row->tax_value) {
+                            $tax_info .= '<br>Tax (' . ucfirst($row->tax_type) . '): ' . number_format($row->tax_value, 2);
+                        }
+                        return $tax_info;
+                    }
+                    return '';
+                })
+                ->addColumn('contact_company', function($row) {
+                    return $row->contact_company ?: '';
+                })
+                ->rawColumns(['final_total', 'action', 'tax_details', 'payment_status', 'payment_due', 'ref_no', 'recur_details'])
                 ->make(true);
         }
 
+        // Return view with enhanced filters
         $business_id = request()->session()->get('user.business_id');
-
-        $categories = ExpenseCategory::where('business_id', $business_id)
-                            ->whereNull('parent_id')
-                            ->pluck('name', 'id');
-
+        $categories = ExpenseCategory::where('business_id', $business_id)->whereNull('parent_id')->pluck('name', 'id');
         $users = User::forDropdown($business_id, false, true, true);
-
         $business_locations = BusinessLocation::forDropdown($business_id, true);
-
         $contacts = Contact::contactDropdown($business_id, false, false);
+        $sub_categories = ExpenseCategory::where('business_id', $business_id)->whereNotNull('parent_id')->pluck('name', 'id')->toArray();
 
-        $sub_categories = ExpenseCategory::where('business_id', $business_id)
-                        ->whereNotNull('parent_id')
-                        ->pluck('name', 'id')
-                        ->toArray();
-
-        return view('expense.index')
-            ->with(compact('categories', 'business_locations', 'users', 'contacts', 'sub_categories'));
+        return view('expense.index')->with(compact('categories', 'business_locations', 'users', 'contacts', 'sub_categories'));
     }
 
     /**
@@ -362,7 +324,7 @@ class ExpenseController extends Controller
 
         if (request()->ajax()) {
             return view('expense.add_expense_modal')
-                ->with(compact('expense_categories', 'business_locations', 'users', 'taxes', 'payment_line', 'payment_types', 'accounts', 'bl_attributes', 'contacts'));
+                ->with(compact('expense_categories', 'sub_categories', 'business_locations', 'users', 'taxes', 'payment_line', 'payment_types', 'accounts', 'bl_attributes', 'contacts'));
         }
 
         return view('expense.create')
@@ -374,6 +336,8 @@ class ExpenseController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
+     *
+     * Enhanced store method with improved tax calculations
      */
     public function store(Request $request)
     {
@@ -382,57 +346,65 @@ class ExpenseController extends Controller
         }
 
         try {
-            // dd($request->all());
             $business_id = $request->session()->get('user.business_id');
-            //Check if subscribed or not
+            
+            // Validate inputs including new tax fields
+            $request->validate([
+                'document' => 'file|max:'. (config('constants.document_size_limit') / 1000),
+                'amount_before_tax' => 'required|numeric|min:0',
+                'tax_type' => 'required|in:percentage,fixed',
+                'final_total' => 'required|numeric|min:0'
+            ]);
+
             if (!$this->moduleUtil->isSubscribed($business_id)) {
                 return $this->moduleUtil->expiredResponse(action('ExpenseController@index'));
             }
-            //Validate document size
-            $request->validate([
-                'document' => 'file|max:'. (config('constants.document_size_limit') / 1000)
-            ]);
+
             $business_location = BusinessLocation::where('id', $request->location_id)->first();
             $currency_details = Currency::where('id', $business_location->currency_id)->first();
-            // dd($request->sub_total);
-            $request['exchange_rate'] = $currency_details->rate;
             
+            // Enhanced tax calculation
+            $this->calculateEnhancedTax($request);
+            
+            $request['exchange_rate'] = $currency_details->rate;
             $user_id = $request->session()->get('user.id');
+            
             DB::beginTransaction();
+            
             $expense = $this->transactionUtil->createExpense($request, $business_id, $user_id);
-            // dd($expense);
-            if(isset($request->is_purchase) && $request->is_purchase==1){
-                $expense->update(['is_purchase'=>1]);
+            
+            // Store additional tax information
+            $expense->update([
+                'amount_before_tax' => $request->amount_before_tax,
+                'tax_type' => $request->tax_type,
+                'tax_value' => $request->tax_value ?? 0,
+                'is_purchase' => $request->is_purchase ?? 0
+            ]);
 
+            if (isset($request->is_purchase) && $request->is_purchase == 1) {
                 foreach ($request->purchases as $key => $purchaseId) {
                     ExpensePurchase::create([
                         "expense_id" => $expense->id,
                         "purchase_id" => $purchaseId,
-                        "total" => $request->sub_total[$key] ,
+                        "total" => $request->sub_total[$key],
                     ]);
                 }
-                
             }
+
             if (request()->ajax()) {
                 $payments = !empty($request->input('payment')) ? $request->input('payment') : [];
-                $sellPayment = $this->cashRegisterUtil->addSellPayments($expense, $payments);
+                $this->cashRegisterUtil->addSellPayments($expense, $payments);
             }
-            // return $sellPayment;
-            $this->transactionUtil->activityLog($expense, 'added');
 
+            $this->transactionUtil->activityLog($expense, 'added');
             DB::commit();
 
-            $output = ['success' => 1,
-                            'msg' => __('expense.expense_add_success')
-                        ];
+            $output = ['success' => 1, 'msg' => __('expense.expense_add_success')];
+            
         } catch (\Exception $e) {
             DB::rollBack();
-
             \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
-            
-            $output = ['success' => 0,
-                            'msg' => __('messages.something_went_wrong')
-                        ];
+            $output = ['success' => 0, 'msg' => __('messages.something_went_wrong')];
         }
 
         if (request()->ajax()) {
@@ -509,6 +481,8 @@ class ExpenseController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\Response
+     *
+     * Enhanced update method with currency fix
      */
     public function update(Request $request, $id)
     {
@@ -517,69 +491,75 @@ class ExpenseController extends Controller
         }
 
         try {
-            //Validate document size
             $request->validate([
-                'document' => 'file|max:'. (config('constants.document_size_limit') / 1000)
+                'document' => 'file|max:'. (config('constants.document_size_limit') / 1000),
+                'amount_before_tax' => 'required|numeric|min:0',
+                'tax_type' => 'required|in:percentage,fixed',
+                'final_total' => 'required|numeric|min:0'
             ]);
             
-            $business_location = BusinessLocation::where('id', $request->location_id)->first();
-            $currency_details = Currency::where('id', $business_location->currency_id)->first();
-            $request['exchange_rate'] = $currency_details->rate;
             $business_id = $request->session()->get('user.business_id');
             
-            //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
                 return $this->moduleUtil->expiredResponse(action('ExpenseController@index'));
             }
 
-            $expense = $this->transactionUtil->updateExpense($request, $id, $business_id);
-            // dd( $request->sub_total);
-            if(isset($request->is_purchase) && $request->is_purchase==1){
-                $expense->update(['is_purchase'=>1]);
-                ExpensePurchase::whereNotIn('purchase_id',$request->purchases)->where('expense_id',$id)->delete();
+            // Get current currency for proper calculations
+            $business_location = BusinessLocation::where('id', $request->location_id)->first();
+            $currency_details = Currency::where('id', $business_location->currency_id)->first();
+            
+            // Enhanced tax calculation
+            $this->calculateEnhancedTax($request);
+            
+            $request['exchange_rate'] = $currency_details->rate;
 
+            $expense = $this->transactionUtil->updateExpense($request, $id, $business_id);
+            
+            // Update additional tax information
+            $expense->update([
+                'amount_before_tax' => $request->amount_before_tax,
+                'tax_type' => $request->tax_type,
+                'tax_value' => $request->tax_value ?? 0,
+                'is_purchase' => $request->is_purchase ?? 0
+            ]);
+
+            // Handle purchase expenses
+            if (isset($request->is_purchase) && $request->is_purchase == 1) {
+                ExpensePurchase::whereNotIn('purchase_id', $request->purchases)->where('expense_id', $id)->delete();
+                
                 foreach ($request->purchases as $key => $purchaseId) {
                     $isExist = ExpensePurchase::where([
                         "expense_id" => $id,
                         "purchase_id" => $purchaseId
                     ])->first();
-                    if($isExist!=null){
-                        ExpensePurchase::where([
-                            "expense_id" => $id,
-                            "purchase_id" => $purchaseId,
-                        ])->update([
-                            "total" => $request->sub_total[$key] ,
-                        ]);
-                    }else{
+                    
+                    if ($isExist) {
+                        $isExist->update(["total" => $request->sub_total[$key]]);
+                    } else {
                         ExpensePurchase::create([
                             "expense_id" => $id,
                             "purchase_id" => $purchaseId,
-                            "total" => $request->sub_total[$key] ,
+                            "total" => $request->sub_total[$key],
                         ]);
                     }
-                   
                 }
-            }else{
-                $expense->update(['is_purchase'=>0]);
-                ExpensePurchase::where([
-                    "expense_id" => $expense->id,
-                ])->delete();
+            } else {
+                $expense->update(['is_purchase' => 0]);
+                ExpensePurchase::where("expense_id", $expense->id)->delete();
             }
+
             $this->transactionUtil->activityLog($expense, 'edited');
 
-            $output = ['success' => 1,
-                            'msg' => __('expense.expense_update_success')
-                        ];
+            $output = ['success' => 1, 'msg' => __('expense.expense_update_success')];
+            
         } catch (\Exception $e) {
             \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
-            
-            $output = ['success' => 0,
-                            'msg' => __('messages.something_went_wrong')
-                        ];
+            $output = ['success' => 0, 'msg' => __('messages.something_went_wrong')];
         }
 
         return redirect('expenses')->with('status', $output);
     }
+
 
     /**
      * Remove the specified resource from storage.
@@ -672,6 +652,58 @@ class ExpenseController extends Controller
             return $purchases;
             
             return json_encode($result);
+    }
+
+    /**
+     * Calculate enhanced tax based on type and values
+     */
+    private function calculateEnhancedTax(Request $request)
+    {
+        $amount_before_tax = floatval($request->amount_before_tax);
+        $tax_type = $request->tax_type;
+        
+        if ($request->tax_id) {
+            $tax_rate = TaxRate::find($request->tax_id);
+            if ($tax_rate && $tax_type === 'percentage') {
+                $tax_value = ($amount_before_tax * $tax_rate->amount) / 100;
+                $request->merge(['tax_value' => $tax_value]);
+                $request->merge(['final_total' => $amount_before_tax + $tax_value]);
+            } elseif ($tax_type === 'fixed') {
+                $tax_value = floatval($request->tax_value);
+                $request->merge(['final_total' => $amount_before_tax + $tax_value]);
+            }
+        } else {
+            $request->merge(['final_total' => $amount_before_tax]);
+        }
+    }
+
+     /**
+     * Get enhanced action buttons
+     */
+    private function getActionButtons($row)
+    {
+        $buttons = '<div class="btn-group">
+            <button type="button" class="btn btn-info dropdown-toggle btn-xs" 
+                data-toggle="dropdown" aria-expanded="false">Actions<span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-left" role="menu">';
+        
+        if (auth()->user()->can("expense.edit")) {
+            $buttons .= '<li><a href="'.action('ExpenseController@edit', [$row->id]).'"><i class="glyphicon glyphicon-edit"></i> Edit</a></li>';
+            $buttons .= '<li><a href="'.action('ExpenseController@create', ["d" => $row->id]).'"><i class="fa fa-copy"></i> Duplicate</a></li>';
+        }
+        
+        if ($row->document) {
+            $buttons .= '<li><a href="'.url('uploads/documents/' . $row->document).'" download=""><i class="fa fa-download"></i> Download Document</a></li>';
+        }
+        
+        if (auth()->user()->can("expense.delete")) {
+            $buttons .= '<li><a href="#" data-href="'.action('ExpenseController@destroy', [$row->id]).'" class="delete_expense"><i class="glyphicon glyphicon-trash"></i> Delete</a></li>';
+        }
+        
+        $buttons .= '</ul></div>';
+        
+        return $buttons;
     }
 }
 

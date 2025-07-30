@@ -38,6 +38,7 @@
                 <th>
                     <i class="fa fa-trash" aria-hidden="true"></i>
                 </th>
+                <th>Received Quantity</th>
               </tr>
         </thead>
         <tbody>
@@ -254,6 +255,10 @@
             @endif
             @endif
             <td><i class="fa fa-times remove_purchase_entry_row text-danger" title="Remove" style="cursor:pointer;"></i></td>
+            <td>
+                {!! Form::number('purchases[' . $loop->index . '][received_quantity]', $purchase_line->received_quantity, ['class' => 'form-control input-sm input_number', 'step' => 'any']) !!}
+            </td>
+
         </tr>
         <?php $row_count = $loop->index + 1 ; ?>
     @endforeach

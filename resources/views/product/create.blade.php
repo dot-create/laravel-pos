@@ -329,13 +329,23 @@
                   {!! Form::text('product_racks[' . $id . '][position]', !empty($rack_details[$id]['position']) ? $rack_details[$id]['position'] : null, ['class' => 'form-control', 'placeholder' => __('lang_v1.position')]); !!}
                 @endif
 
-                          {!! Form::label('net_table',  __('Net Table') . ':') !!}
-                          <select class="form-control" name="net_table">
-                              <option>01.01.01</option>
-                              <option>01.01.02</option>
-                              <option>01.01.03</option>
-                              <option>01.01.04</option>
-                          </select>
+                <!-- {!! Form::label('net_table',  __('Net Table') . ':') !!}
+                <select class="form-control" name="net_table">
+                    <option>01.01.01</option>
+                    <option>01.01.02</option>
+                    <option>01.01.03</option>
+                    <option>01.01.04</option>
+                </select> -->
+
+                {!! Form::label('net_table', __('Net Table') . ':') !!}
+                <select class="form-control" name="product_racks[{{ $id }}][net_table]">
+                    <option value="">{{ __('Select') }}</option> {{-- Add this line --}}
+                    @foreach ($netTables[$id] as $table)
+                        <option value="{{ $table }}" {{ (!empty($rack_details[$id]['net_table']) && $rack_details[$id]['net_table'] == $table) ? 'selected' : '' }}>
+                            {{ $table }}
+                        </option>
+                    @endforeach
+                </select>
 
 
               </div>
@@ -432,23 +442,23 @@
           </div>
         </div>
             <?php
-            $shippingList = [
-                'AIR' => ['6.6138' => 'Aereo'],
-                'MAR' => ['4.4092' => 'Maritimo'],
-                'LCL' => ['0' => 'Local'],
-                'INT' => ['6.05' => 'Interno'],
-                'MA1' => ['12' => 'Minimum Air 1'],
-                'MA2' => ['15' => 'Minimum Air 2'],
-                'MA3' => ['20' => 'Minimum Air 3'],
-                'MM1' => ['50' => 'Minimum MAR 1'],
-                'MM2' => ['100' => 'Minimum MAR 2'],
-                'MM3' => ['100' => 'Minimum MAR 3'],
-            ];
-            $weightUnits = [
-                'KG' => ['1' => 'KILOGRAMO'],
-                'OZ' => ['0.0283495' => 'ONZA'],
-                'LB' => ['0.453592' => 'LIBRA (Pouns)'],
-            ];
+            // $shippingList = [
+            //     'AIR' => ['6.6138' => 'Aereo'],
+            //     'MAR' => ['4.4092' => 'Maritimo'],
+            //     'LCL' => ['0' => 'Local'],
+            //     'INT' => ['6.05' => 'Interno'],
+            //     'MA1' => ['12' => 'Minimum Air 1'],
+            //     'MA2' => ['15' => 'Minimum Air 2'],
+            //     'MA3' => ['20' => 'Minimum Air 3'],
+            //     'MM1' => ['50' => 'Minimum MAR 1'],
+            //     'MM2' => ['100' => 'Minimum MAR 2'],
+            //     'MM3' => ['100' => 'Minimum MAR 3'],
+            // ];
+            // $weightUnits = [
+            //     'KG' => ['1' => 'KILOGRAMO'],
+            //     'OZ' => ['0.0283495' => 'ONZA'],
+            //     'LB' => ['0.453592' => 'LIBRA (Pouns)'],
+            // ];
             ?>
 
 

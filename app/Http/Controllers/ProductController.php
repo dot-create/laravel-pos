@@ -29,6 +29,7 @@ use Excel;
 use App\ShippingWay;
 use App\WeightUnit;
 use App\CustomerRequest;
+use App\ProductRack;
 
 class ProductController extends Controller
 {
@@ -143,6 +144,11 @@ class ProductController extends Controller
             }
             
             $products->groupBy('products.id');
+
+            $stock_type_filter = request()->get('stock_type_filter', null);
+            if (!empty($stock_type_filter)) {
+                $products->where('products.stock_type', $stock_type_filter);
+            }
 
             $type = request()->get('type', null);
             if (!empty($type)) {
@@ -422,9 +428,70 @@ class ProductController extends Controller
         //product screen view from module
         $pos_module_data = $this->moduleUtil->getModuleData('get_product_screen_top_view');
 
+        $shippingList = $this->getShippingListFormat();
+
+        $weightUnits = $this->getWeightListFormat();
+
+        $netTables = ProductRack::selectRaw("
+                id,
+                location_id,
+                CONCAT_WS(' - ', 
+                    IFNULL(rack, 0), 
+                    IFNULL(`row`, 0), 
+                    IFNULL(position, 0)
+                ) as full_location
+            ")
+            ->get()
+            ->groupBy('location_id')
+            ->map(function ($items) {
+                return $items->pluck('full_location', 'id');
+            });
+
+            
         return view('product.create')
-            ->with(compact('categories', 'brands', 'units', 'taxes', 'barcode_types', 'default_profit_percent', 'tax_attributes', 'barcode_default', 'business_locations', 'duplicate_product', 'sub_categories', 'rack_details', 'selling_price_group_count', 'module_form_parts', 'product_types', 'common_settings', 'warranties', 'pos_module_data'));
+            ->with(compact('categories', 'brands', 'units', 'taxes', 'barcode_types', 'default_profit_percent', 'tax_attributes', 'barcode_default', 'business_locations', 'duplicate_product', 'sub_categories', 'rack_details', 'selling_price_group_count', 'module_form_parts', 'product_types', 'common_settings', 'warranties', 'pos_module_data', 'weightUnits', 'shippingList', 'netTables'));
     }
+
+    /**
+     * Get shipping list format for weight units.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getWeightListFormat()
+    {
+        $units = WeightUnit::all();
+
+        $weightUnit = [];
+
+        foreach ($units as $unit) {
+            $weightUnit[$unit->code] = [
+                (string) $unit->equivalent_to_lb => $unit->unit_name
+            ];
+        }
+
+        return $weightUnit;
+    }
+
+    /**
+     * Get shipping list format for shipping methods.
+     *
+     * @return array
+     */
+    public function getShippingListFormat()
+    {
+        $shipping_methods = ShippingWay::all();
+
+        $shippingList = [];
+
+        foreach ($shipping_methods as $method) {
+            $shippingList[$method->code] = [
+                (string) $method->freight_rate => $method->shipping_method
+            ];
+        }
+
+        return $shippingList;
+    }
+
 
     private function product_types()
     {

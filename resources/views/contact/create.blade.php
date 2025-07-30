@@ -225,6 +225,124 @@
                 </div>
             @endif
 
+            <div class="col-md-12"
+                style="box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+                    padding: 10px;
+                    margin: 10px 10px 30px;
+                    width: 98%;
+                    border-radius: 7px;">
+
+                <fieldset class="border p-3 mb-3">
+                    <legend style="color: #ff9e9e" class="w-auto px-2">Representative Contact Details</legend>
+
+                    <div class="row align-items-end"
+                        style="padding: 10px;
+                            width: 98%;
+                            border-radius: 7px;">
+
+                        <!-- Representative Name -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {!! Form::label('representative_name', 'Name:') !!}
+                                <div class="input-group">
+                                    <span class="input-group-addon">
+                                        <i class="fa fa-user"></i>
+                                    </span>
+                                    {!! Form::text('representative_name', null, ['class' => 'form-control', 'placeholder' => 'Representative Name']) !!}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Representative Position -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {!! Form::label('representative_position', 'Position:') !!}
+                                <div class="input-group">
+                                    <span class="input-group-addon">
+                                        <i class="fa fa-briefcase"></i>
+                                    </span>
+                                    {!! Form::text('representative_position', null, ['class' => 'form-control', 'placeholder' => 'Position']) !!}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Representative Phone Number -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {!! Form::label('representative_phone', 'Phone Number:') !!}
+                                <div class="input-group">
+                                    <span class="input-group-addon">
+                                        <i class="fa fa-phone"></i>
+                                    </span>
+                                    {!! Form::text('representative_phone', null, ['class' => 'form-control', 'placeholder' => 'Landline Number']) !!}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Representative Mobile Number -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {!! Form::label('representative_mobile', 'Mobile Number:') !!}
+                                <div class="input-group">
+                                    <span class="input-group-addon">
+                                        <i class="fa fa-mobile-alt"></i>
+                                    </span>
+                                    {!! Form::text('representative_mobile', null, ['class' => 'form-control', 'placeholder' => 'Mobile Number']) !!}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Representative Email -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {!! Form::label('representative_email', 'Email:') !!}
+                                <div class="input-group">
+                                    <span class="input-group-addon">
+                                        <i class="fa fa-envelope"></i>
+                                    </span>
+                                    {!! Form::email('representative_email', null, ['class' => 'form-control', 'placeholder' => 'Email']) !!}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Button aligned to bottom-right -->
+                        <div class="col-md-4" style="display: flex; justify-content: flex-end; margin-top: 25px;">
+                            <button type="button" class="btn btn-primary btn-add-more-contact">
+                                <i class="fa fa-plus-circle"></i> Add Contact
+                            </button>
+                        </div>
+                    </div>
+
+                </fieldset>
+
+                <div class="col-md-12"
+                    style="box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+                        padding: 10px;
+                        margin: 10px;
+                        width: 98%;
+                        border-radius: 7px;">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Position</th>
+                                <th>Phone</th>
+                                <th>Mobile</th>
+                                <th>Email</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contact_person_body">
+                            <!-- Dynamic rows go here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Representative Data -->
+            <div id="representative_data"></div>
+
             <div class="clearfix"></div>
         </div>
         <div class="row">

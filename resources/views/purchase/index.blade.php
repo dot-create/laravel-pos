@@ -75,6 +75,9 @@
 
     @include('purchase.partials.update_purchase_status_modal')
 
+    <div class="modal fade edit_received_modal" tabindex="-1" role="dialog" aria-labelledby="gridModalLabel">
+</div>
+
 </section>
 
 <section id="receipt_section" class="print_section"></section>
@@ -98,12 +101,51 @@
         purchase_table.ajax.reload();
     });
 
+    // $(document).on('click', '.update_status', function(e) {
+    //     e.preventDefault();
+
+    //     const status = $(this).data('status');
+    //     const purchaseId = $(this).data('purchase_id');
+
+    //     // Set values in the form
+    //     $('#update_purchase_status_form').find('#status').val(status).prop('disabled', status === 'received');
+    //     $('#update_purchase_status_form').find('#purchase_id').val(purchaseId);
+
+    //     // Disable or enable the submit button based on status
+    //     const updateBtn = $('#update_purchase_status_form').find('button[type="submit"]');
+    //     updateBtn.prop('disabled', status === 'received');
+
+    //     if (status === 'received') {
+    //         updateBtn.attr('title', 'Status is already received. Cannot update.');
+    //     } else {
+    //         updateBtn.removeAttr('title');
+    //     }
+
+    //     $('#update_purchase_status_modal').modal('show');
+    // });
+
+
     $(document).on('click', '.update_status', function(e){
         e.preventDefault();
-        $('#update_purchase_status_form').find('#status').val($(this).data('status'));
+        var status = $(this).data('status');
+        if (status == 'received') {
+            toastr.error('You cannot directly mark as Received from the list. Please open the order and update received quantities.');
+            return false;
+        }
+        $('#update_purchase_status_form').find('#status').val(status);
         $('#update_purchase_status_form').find('#purchase_id').val($(this).data('purchase_id'));
         $('#update_purchase_status_modal').modal('show');
     });
+
+
+
+
+    // $(document).on('click', '.update_status', function(e){
+    //     e.preventDefault();
+    //     $('#update_purchase_status_form').find('#status').val($(this).data('status'));
+    //     $('#update_purchase_status_form').find('#purchase_id').val($(this).data('purchase_id'));
+    //     $('#update_purchase_status_modal').modal('show');
+    // });
 
     $(document).on('submit', '#update_purchase_status_form', function(e){
         e.preventDefault();
@@ -133,5 +175,34 @@
         });
     });
 </script>
+
+
+<script>
+$(document).ready(function() {
+    $('#edit-received-form').submit(function(e) {
+        e.preventDefault(); // prevent normal form submit
+
+        let form = $(this);
+        let url = form.attr('action');
+        let data = form.serialize();
+        let dataType = 'json';
+
+        $.post(url, dataType, data, function(response) {
+            if (response.success) {
+                toastr.success(response.msg);
+                $('.edit_received_modal').modal('hide');
+
+                // Optional: reload table or update row
+                if ($('#purchase_table').length) {
+                    $('#purchase_table').DataTable().ajax.reload();
+                }
+            }
+        }).fail(function(xhr) {
+            toastr.error("Failed to update received quantities");
+        });
+    });
+});
+</script>
+
 	
 @endsection

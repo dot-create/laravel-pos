@@ -98,5 +98,6 @@ return [
     'avaliable_quantity'=>'Avaliable Qty',
     'avaliable_status'=>'Avaliability Status',
     'Sell price wot / Selling price (Excluding TAX)'=>'Sell price wot / Selling price (Excluding TAX) ',
-    'current_stock'=>'Current Stock'
+    'current_stock'=>'Current Stock',
+    'contact_person'=>'Representative Name',
 ];

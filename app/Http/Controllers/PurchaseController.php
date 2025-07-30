@@ -127,6 +127,11 @@ class PurchaseController extends Controller
                     if (auth()->user()->can("purchase.delete")) {
                         $html .= '<li><a href="' . action('PurchaseController@destroy', [$row->id]) . '" class="delete-purchase"><i class="fas fa-trash"></i>' . __("messages.delete") . '</a></li>';
                     }
+                    if (auth()->user()->can("purchase.update")) {
+                        $html .= '<li><a href="#" data-href="' . action('PurchaseController@editReceivedQtyModal', [$row->id]) . '" class="btn-modal" data-container=".edit_received_modal">
+                            <i class="fas fa-boxes"></i>' . __("Edit Received Quantity") . '</a></li>';
+                    }
+
 
                     $html .= '<li><a href="' . action('LabelsController@show') . '?purchase_id=' . $row->id . '" data-toggle="tooltip" title="' . __('lang_v1.label_help') . '"><i class="fas fa-barcode"></i>' . __('barcode.labels') . '</a></li>';
 
@@ -252,6 +257,10 @@ class PurchaseController extends Controller
                 $requests->where('status', request()->status);
             }
 
+            if (!empty(request()->qref)) {
+                $requests->where('request_reference', request()->qref);
+            }
+
             if (!empty(request()->sku)) {
                 $searchTerm = request()->sku;
                 $requests->whereHas('items', function ($q) use ($searchTerm) {
@@ -279,6 +288,7 @@ class PurchaseController extends Controller
                         });
                     }
                 })
+                ->addColumn('id', fn($row) => $row->id ?? 'N/A')
                 ->addColumn('date', fn($row) => $row->created_at ?? 'N/A')
                 ->addColumn('name', function ($row) {
                     $name = $row->contact->name ?? '';
@@ -500,18 +510,65 @@ class PurchaseController extends Controller
         //     abort(403, 'Unauthorized action.');
         // }
         $business_id = request()->session()->get('user.business_id');
+        $key = 'id';
 
-        $request = CustomerRequest::where('id', $id)
-                ->with('contact:id,name','items','items.variation','items.variation.variation_location_details') // Load contact name
-                ->first();
+        if ($id == 'draft' || $id == 'drafts' || $id == 'drafts_list' || $id == 'items' ) {
+            $id = $business_id;
+            $key = 'business_id';
+        }
+
+        $request = CustomerRequest::where($key, $id)
+                ->with('contact:id,name','items','items.variation','items.variation.variation_location_details', 'items.assignedUser') // Load contact name
+                ->firstOrFail();
         $business_locations = BusinessLocation::forDropdown($business_id,false,true);
         $bl_attributes = $business_locations['attributes'];
         $orderStatuses = $this->productUtil->requestStatuses();
         $items=$request->items;
         $currency_details = $this->transactionUtil->purchaseCurrencyDetails($business_id);
         $productUtil=$this->productUtil;
+
+        // Apply filters
+        $filters = [
+            'assigned_user' => $request->items->get('assigned_user'),
+            'status' => $request->get('status')
+        ];
+        
+        // Filter by assigned user
+        if (!empty($filters['assigned_user'])) {
+            if ($filters['assigned_user'] === 'unassigned') {
+                $items->whereNull('assigned_to');
+            } else {
+                $items->where('assigned_to', $filters['assigned_user']);
+            }
+        }
+        
+        // Filter by status
+        if (!empty($filters['status'])) {
+            $items->where('status', $filters['status']);
+        }
+        
+        // $items = $items->get();
+        
+        // Get all company users for filter dropdown
+        $companyUsers = User::whereHas('business_users', function($query) use ($business_id) {
+            $query->where('business_id', $business_id);
+        })->select('id', 'first_name', 'last_name', 'username')
+        ->get()
+        ->map(function($user) {
+            return [
+                'id' => $user->id,
+                'name' => trim($user->first_name . ' ' . $user->last_name) ?: $user->username
+            ];
+        });
+        
+        // Get unique statuses for status filter
+        $statuses = RequestItem::where('request_id', $id)
+                    ->select('status')
+                    ->distinct()
+                    ->pluck('status');
+
         return view('sell.request.show')
-            ->with(compact('request','business_locations','orderStatuses','bl_attributes','items','currency_details','productUtil','business_id'));
+            ->with(compact('request','business_locations','orderStatuses','bl_attributes','items','currency_details','productUtil','business_id', 'companyUsers', 'statuses', 'filters'));
     }
     // public function listPendingRequests()
     // {
@@ -1387,6 +1444,7 @@ class PurchaseController extends Controller
             // $transaction_data['ref_no'] = $request->ref_no;
             $customerRequest=null;
             $customerRequest['business_id']=$business_id;
+            $customerRequest['contact_person_id']=$request->contact_person_id;
             $customerRequest['customer_id']=$request->contact_id;
             $customerRequest['request_reference']=$request->ref_no;
             $customerRequest['business_location_id']=$request->location_id;
@@ -1752,6 +1810,33 @@ class PurchaseController extends Controller
                 $purchases[$i]['item_tax'] = number_format(str_replace(",", "", $purchases[$i]['item_tax']) , 2);
                 $purchases[$i]['default_sell_price'] = number_format(str_replace(",","",$purchases[$i]['default_sell_price']) , 2, '.', '');
             }
+
+            foreach ($request->input('purchases') as $line) {
+                $purchase_qty = $line['quantity'];
+                $received_qty = $line['received_quantity'] ?? 0;
+
+                if ($received_qty > $purchase_qty) {
+                    return back()->with('status', ['success' => false, 'msg' => 'Received quantity cannot exceed purchased quantity.']);
+                }
+
+                $all_received = $all_received ?? true;
+                if ($received_qty < $purchase_qty) {
+                    $all_received = false;
+                }
+            }
+
+            // If user tries to mark status as "received" but quantities do not match
+            if ($request->status == 'received' && !$all_received) {
+                return back()->with('status', ['success' => false, 'msg' => 'You cannot mark as Received unless all quantities are fully received.']);
+            }
+
+            // Update each purchase line's received_quantity
+            foreach ($request->input('purchases') as $line) {
+                $purchase_line = PurchaseLine::find($line['purchase_line_id']);
+                $purchase_line->received_quantity = $line['received_quantity'];
+                $purchase_line->save();
+            }
+
 
             $delete_purchase_lines = $this->productUtil->createOrUpdatePurchaseLines($transaction, $purchases, $currency_details, $enable_product_editing, $before_status);
 
@@ -2551,6 +2636,35 @@ class PurchaseController extends Controller
                                 ->with(['purchase_lines'])
                                 ->findOrFail($request->input('purchase_id'));
 
+           
+            $all_received = true;
+
+            foreach ($transaction->purchase_lines as $line) {
+                $purchase_qty = $line['quantity'];
+                $received_qty = $line['received_quantity'] ?? 0;
+
+                if ($received_qty > $purchase_qty) {
+                    return ['success' => false, 'msg' => 'Received quantity cannot exceed purchased quantity.'];
+                }
+
+                if ($received_qty < $purchase_qty) {
+                    $all_received = false;
+                }
+
+            }
+
+            // Validate status
+            $status = $request->input('status');
+            if ($status == 'received' && !$all_received) {
+                return  ['success' => false, 'msg' => 'You cannot mark as Received unless all quantities are fully received.'];
+            }
+
+            if ($status == 'partial' && $all_received) {
+                // Optional safety: don't allow 'Partial' if all are received
+                $status = 'received';
+            }
+
+
             $before_status = $transaction->status;
             
 
@@ -2642,4 +2756,53 @@ class PurchaseController extends Controller
         return view('sell.request.create')
             ->with(compact('walk_in_customer','taxes', 'orderStatuses', 'business_locations', 'currency_details', 'default_purchase_status', 'customer_groups', 'types', 'shortcuts', 'payment_line', 'payment_types', 'accounts', 'bl_attributes', 'common_settings'));
     }
+
+
+    public function getContactPersonsByLocation($location_id)
+    {
+        $location = \App\BusinessLocation::findOrFail($location_id);
+
+        // Get contacts under this business
+        $contacts = \App\Contact::where('business_id', $location->business_id)->pluck('id');
+
+        // Get contact persons related to these contacts
+        $contactPersons = \App\ContactPerson::whereIn('contact_id', $contacts)
+            ->select('id', 'representative_name') // Adjust if you want more info
+            ->get();
+
+        return response()->json($contactPersons);
+    }
+
+    public function updateReceivedQty(Request $request, $id)
+    {
+        $purchase = Transaction::findOrFail($id);
+
+        if ($request->has('lines')) {
+            foreach ($request->input('lines') as $line_id => $line_data) {
+                $purchase_line = PurchaseLine::find($line_id);
+                if ($purchase_line) {
+                    $purchase_line->received_quantity = $line_data['received_quantity'];
+                    if (isset($line_data['lot_number'])) {
+                        $purchase_line->lot_number = $line_data['lot_number'];
+                    }
+                    $purchase_line->save();
+                }
+            }
+        }
+
+        // return response()->json(['success' => true, 'msg' => __('purchase.received_quantity_updated')]);
+        return redirect()->back()->with('status', __('purchase.received_quantity_updated'));
+        // return ['success' => true, 'msg' => __('purchase.received_quantity_updated')];
+
+    }
+
+    public function editReceivedQtyModal($id)
+    {
+        $purchase = Transaction::with(['purchase_lines.variations.product', 'purchase_lines.variations.product.unit'])
+            ->findOrFail($id);
+
+        return view('purchase.partials.edit_received_qty_modal', compact('purchase'));
+    }
+
+
 }

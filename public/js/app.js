@@ -1413,126 +1413,198 @@ $(document).ready(function() {
         });
     });
 
-    //date filter for expense table
-    if ($('#expense_date_range').length == 1) {
-        $('#expense_date_range').daterangepicker(
-            dateRangeSettings, 
-            function(start, end) {
-                $('#expense_date_range').val(
-                    start.format(moment_date_format) + ' ~ ' + end.format(moment_date_format)
-                );
-                expense_table.ajax.reload();
-            }
-        );
-
-        $('#expense_date_range').on('cancel.daterangepicker', function(ev, picker) {
-            $('#product_sr_date_filter').val('');
-            expense_table.ajax.reload();
-        });
-    }
-
+    // -------- Custom JavaScript for Expense Module --------   
     //Expense table
-    expense_table = $('#expense_table').DataTable({
-        processing: true,
-        serverSide: true,
-        aaSorting: [[1, 'desc']],
-        ajax: {
-            url: '/expenses',
-            data: function(d) {
-                d.expense_for = $('select#expense_for').val();
-                d.contact_id = $('select#expense_contact_filter').val();
-                d.location_id = $('select#location_id').val();
-                d.expense_category_id = $('select#expense_category_id').val();
-                d.expense_sub_category_id = $('select#expense_sub_category_id_filter').val();
-                d.payment_status = $('select#expense_payment_status').val();
-                d.start_date = $('input#expense_date_range')
-                    .data('daterangepicker')
-                    .startDate.format('YYYY-MM-DD');
-                d.end_date = $('input#expense_date_range')
-                    .data('daterangepicker')
-                    .endDate.format('YYYY-MM-DD');
-            },
-        },
-        columns: [
-            { data: 'action', name: 'action', orderable: false, searchable: false },
-            { data: 'transaction_date', name: 'transaction_date' },
-            { data: 'ref_no', name: 'ref_no' },
-            { data: 'recur_details', name: 'recur_details', orderable: false, searchable: false },
-            { data: 'category', name: 'ec.name' },
-            { data: 'sub_category', name: 'esc.name' },
-            { data: 'location_name', name: 'bl.name' },
-            { data: 'payment_status', name: 'payment_status', orderable: false },
-            { data: 'tax', name: 'tr.name' },
-            { data: 'final_total', name: 'final_total' },
-            { data: 'payment_due', name: 'payment_due' },
-            { data: 'expense_for', name: 'expense_for' },
-            { data: 'contact_name', name: 'c.name' },
-            { data: 'additional_notes', name: 'additional_notes' },
-            { data: 'added_by', name: 'usr.first_name'}
-        ],
-        fnDrawCallback: function(row, data, start, end, display) {
-            var expense_total = sum_table_col($('#expense_table'), 'final-total');
-            var total_due = sum_table_col($('#expense_table'), 'payment_due');
-
-            $('.footer_expense_total').html(__currency_trans_from_en(expense_total));
-            $('.footer_total_due').html(__currency_trans_from_en(total_due));
-
-            $('.footer_payment_status_count').html(
-                __sum_status_html($('#expense_table'), 'payment-status')
-            );
-        },
-        createdRow: function(row, data, dataIndex) {
-            $(row)
-                .find('td:eq(4)')
-                .attr('class', 'clickable_td');
-        },
+    $('#expense_date_range').daterangepicker({
+        autoUpdateInput: false,
+        locale: {
+            cancelLabel: 'Clear',
+            format: moment_date_format.toUpperCase()
+        }
+    });
+    
+    $('#expense_payment_date_range').daterangepicker({
+        autoUpdateInput: false,
+        locale: {
+            cancelLabel: 'Clear',
+            format: moment_date_format.toUpperCase()
+        }
     });
 
-    $('select#location_id, select#expense_for, select#expense_contact_filter, \
-        select#expense_category_id, select#expense_payment_status, \
-        select#expense_sub_category_id_filter').on(
-        'change',
-        function() {
-            expense_table.ajax.reload();
+    $('#expense_date_range').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format(moment_date_format.toUpperCase()) + ' ~ ' + picker.endDate.format(moment_date_format.toUpperCase()));
+        expense_table.ajax.reload();
+    });
+
+    $('#expense_payment_date_range').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(picker.startDate.format(moment_date_format.toUpperCase()) + ' ~ ' + picker.endDate.format(moment_date_format.toUpperCase()));
+        expense_table.ajax.reload();
+    });
+
+    $('#expense_date_range, #expense_payment_date_range').on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+        expense_table.ajax.reload();
+    });
+
+    // Enhanced DataTable
+    var expense_table = $('#expense_table').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '/expenses',
+            data: function (d) {
+                var start = '';
+                var end = '';
+                var payment_start = '';
+                var payment_end = '';
+                
+                if ($('#expense_date_range').val()) {
+                    var dates = $('#expense_date_range').val().split(' ~ ');
+                    start = dates[0];
+                    end = dates[1];
+                }
+                
+                if ($('#expense_payment_date_range').val()) {
+                    var payment_dates = $('#expense_payment_date_range').val().split(' ~ ');
+                    payment_start = payment_dates[0];
+                    payment_end = payment_dates[1];
+                }
+                
+                d = $.extend({}, d, {
+                    location_id: $('#location_id').val(),
+                    expense_for: $('#expense_for').val(),
+                    expense_contact_filter: $('#expense_contact_filter').val(),
+                    expense_category_id: $('#expense_category_id').val(),
+                    expense_sub_category_id: $('#expense_sub_category_id_filter').val(),
+                    expense_payment_status: $('#expense_payment_status').val(),
+                    start_date: start,
+                    end_date: end,
+                    payment_start_date: payment_start,
+                    payment_end_date: payment_end
+                });
+                
+                return d;
+            }
+        },
+        columnDefs: [{
+            targets: [0, 1, 2],
+            orderable: false,
+            searchable: false
+        }],
+        columns: [
+            {data: 'action', name: 'action'},
+            {data: 'transaction_date', name: 'transaction_date'},
+            {data: 'ref_no', name: 'ref_no'},
+            {data: 'recur_details', name: 'recur_details'},
+            {data: 'category', name: 'ec.name'},
+            {data: 'sub_category', name: 'esc.name'},
+            {data: 'location_name', name: 'bl.name'},
+            {data: 'payment_status', name: 'payment_status'},
+            {data: 'tax_details', name: 'tax_details', orderable: false},
+            {data: 'final_total', name: 'final_total'},
+            {data: 'payment_due', name: 'payment_due'},
+            {data: 'expense_for', name: 'expense_for'},
+            {data: 'contact_name', name: 'c.name'},
+            {data: 'contact_company', name: 'contact_company'},
+            {data: 'additional_notes', name: 'additional_notes'},
+            {data: 'added_by', name: 'added_by'},
+            {data: 'last_payment_date', name: 'last_payment_date'}
+        ],
+        fnDrawCallback: function(oSettings) {
+            var total_expense = parseFloat($('#expense_table tfoot .footer_expense_total').data('orig-value'));
+            var total_due = parseFloat($('#expense_table tfoot .footer_total_due').data('orig-value'));
+            
+            __currency_convert_recursively($('#expense_table'));
+        },
+        createdRow: function (row, data, dataIndex) {
+            // Add any row-specific formatting here
         }
-    );
+    });
 
-    //Date picker
-    // $('#expense_transaction_date').datetimepicker({
-    //     format: moment_date_format + ' ' + moment_time_format,
-    //     ignoreReadonly: true,
-    // });
+    // Filter change handlers
+    $('#location_id, #expense_for, #expense_contact_filter, #expense_category_id, #expense_sub_category_id_filter, #expense_payment_status').on('change', function() {
+        expense_table.ajax.reload();
+    });
 
-    $(document).on('click', 'a.delete_expense', function(e) {
+    // Export functionality
+    $('#export_excel').on('click', function() {
+        var url = '/expenses/export?format=excel&' + expense_table.ajax.params();
+        window.open(url, '_blank');
+    });
+
+    $('#export_pdf').on('click', function() {
+        var url = '/expenses/export?format=pdf&' + expense_table.ajax.params();
+        window.open(url, '_blank');
+    });
+
+    // Delete expense handler
+    $(document).on('click', '.delete_expense', function(e) {
         e.preventDefault();
+        var url = $(this).data('href');
+        
         swal({
             title: LANG.sure,
-            text: LANG.confirm_delete_expense,
-            icon: 'warning',
+            icon: "warning",
             buttons: true,
             dangerMode: true,
-        }).then(willDelete => {
+        }).then((willDelete) => {
             if (willDelete) {
-                var href = $(this).data('href');
-                var data = $(this).serialize();
-
                 $.ajax({
-                    method: 'DELETE',
-                    url: href,
-                    dataType: 'json',
-                    data: data,
+                    method: "DELETE",
+                    url: url,
+                    dataType: "json",
                     success: function(result) {
-                        if (result.success === true) {
+                        if (result.success == true) {
                             toastr.success(result.msg);
                             expense_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
-                    },
+                    }
                 });
             }
         });
     });
+
+    // Payment modal handlers
+    $(document).on('click', '.add_payment_modal', function(e) {
+        e.preventDefault();
+        $('.payment_modal').load($(this).attr('href'), function() {
+            $('.payment_modal').modal('show');
+        });
+    });
+
+    $(document).on('click', '.view_payment_modal', function(e) {
+        e.preventDefault();
+        $('.payment_modal').load($(this).attr('href'), function() {
+            $('.payment_modal').modal('show');
+        });
+    });
+
+
+    $('#open_expense_modal').on('click', function(e) {
+        e.preventDefault();
+
+        $.ajax({
+            url: '/expenses/create',
+            type: 'GET',
+            dataType: 'html',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest' // ensures Laravel recognizes it as AJAX
+            },
+            success: function(response) {
+                $('#expense_modal_container').html(response);
+                $('#expense_modal_container .modal').modal('show');
+            },
+            error: function(xhr) {
+                alert('Failed to load modal');
+                console.error(xhr.responseText);
+            }
+        });
+    });
+
+
+    //------- End Custom JavaScript for Expense Module -------
 
     $(document).on('change', '.payment_types_dropdown', function() {
         var payment_type = $(this).val();
@@ -2775,6 +2847,7 @@ $(document).on('hidden.bs.dropdown', '.btn-group', function(){
     $('.dataTables_scrollBody').removeClass('of-visible');
 })
 var editContact=0;
+var contactIndex = 0;
 $(document).on('click','.btn-add-more-contact',function(e){
     addContact();
 
@@ -2794,8 +2867,10 @@ $(document).on('click','.contact-person-edit',function(e){
     var contact=JSON.parse($(this).attr('data-dt'));
 
     console.log(contact);
-   $("#representative_name").val(contact.representative_name);
+    $("#representative_name").val(contact.representative_name);
+    $("#representative_position").val(contact.representative_position);
     $("#representative_phone").val(contact.representative_phone);
+    $("#representative_mobile").val(contact.representative_mobile);
     $("#representative_email").val(contact.representative_email);
     editContact=contact.id;
     console.log(editContact);
@@ -2819,60 +2894,107 @@ function deleteContact(id){
         },
     });
 }
+
+// updated contact function to handle both adding and editing contacts
 function addContact() {
-    var name = $("#representative_name").val();
-    var phone = $("#representative_phone").val();
-    var email = $("#representative_email").val();
-    var id = $("#hidden_id").val();
+    const name = $("#representative_name").val();
+    const position = $("#representative_position").val();
+    const phone = $("#representative_phone").val();
+    const mobile = $("#representative_mobile").val();
+    const email = $("#representative_email").val();
+    const id = $("#hidden_id").val();
+
+    const contactData = {
+        id,
+        representative_name: name,
+        representative_position: position,
+        representative_phone: phone,
+        representative_mobile: mobile,
+        representative_email: email
+    };
+
+    const isDuplicate = $('#contact_person_body tr').toArray().some(row => {
+        const tds = $(row).find('td');
+        const emailExists = tds.eq(5).text().trim() === email;
+        const phoneExists = tds.eq(3).text().trim() === phone;
+        const mobileExists = tds.eq(4).text().trim() === mobile;
+        return emailExists || phoneExists || mobileExists;
+    });
+
+    if (isDuplicate && editContact === 0) {
+        toastr.warning("A contact with this email, phone, or mobile already exists.");
+        return;
+    }
+
+    // UI update function
+    const buildTableRow = (contact) => `
+        <tr data-id="${contact.id}">
+            <td>${contact.id || '-'}</td>
+            <td>${contact.representative_name}</td>
+            <td>${contact.representative_position}</td>
+            <td>${contact.representative_phone}</td>
+            <td>${contact.representative_mobile}</td>
+            <td>${contact.representative_email}</td>
+            <td>
+                <a class="contact-person-edit" data-dt='${JSON.stringify(contact)}' data-id="${contact.id}" href="#"><i class="fa fa-pencil-alt"></i></a>
+                <a class="contact-person-delete" data-id="${contact.id}" href="#"><i class="fa fa-trash"></i></a>
+            </td>
+        </tr>`;
+
+    // Handling new contact addition when not in edit mode
+    if (editContact === 0 && !id) {
+        // Assign a unique ID if not provided
+        contactData.id = contactData.id || Date.now();
+
+        console.log(contactData);
+
+        // Append to table UI
+        $('#contact_person_body').append(buildTableRow(contactData));
+
+        // Append as hidden input to form
+        $('#representative_data').append(`
+            <input type="hidden" name="contacts[${contactIndex}][id]" value="${contactData.id}">
+            <input type="hidden" name="contacts[${contactIndex}][representative_name]" value="${contactData.representative_name}">
+            <input type="hidden" name="contacts[${contactIndex}][representative_position]" value="${contactData.representative_position}">
+            <input type="hidden" name="contacts[${contactIndex}][representative_phone]" value="${contactData.representative_phone}">
+            <input type="hidden" name="contacts[${contactIndex}][representative_mobile]" value="${contactData.representative_mobile}">
+            <input type="hidden" name="contacts[${contactIndex}][representative_email]" value="${contactData.representative_email}">
+        `);
+
+        contactIndex++; // Increment for next contact
+
+        toastr.success("New contact added locally.");
+        return;
+    }
+
+
     $.ajax({
         method: 'POST',
         url: addContactURL,
         dataType: 'json',
-        data: {edit:editContact,id:id,representative_name:name,representative_phone:phone,representative_email:email},
-        success: function(result) {
-            if (result.success == true) {
-                // $('div.contact_modal').modal('hide');
+        data: {
+            edit: editContact,
+            ...contactData
+        },
+        success: function (result) {
+            if (result.success) {
+                const newRow = buildTableRow(result.contact);
 
-                var tableRow=`<tr data-id="${result.contact.id}">
-                          <td>${result.contact.id}</td>
-                          <td>${result.contact.representative_name}</td>
-                          <td>${result.contact.representative_phone}</td>
-                          <td>${result.contact.representative_email}</td>
-                          <td>
-                              <a class="contact-person-edit" data-dt="${JSON.stringify(result.contact)}" data-id="${result.contact.id}" href="#"><i class="fa fa-pencil-alt"></i></a>
-                              <a class="contact-person-delete" data-id="${result.contact.id}" href="#"><i class="fa fa-trash"></i></a>
-
-                          </td>
-                      </tr>`
-                if (editContact > 0){
-                    $('#contact_person_body tr[data-id='+result.contact.id+']').html(
-                        `<td>${result.contact.id}</td>
-                          <td>${result.contact.representative_name}</td>
-                          <td>${result.contact.representative_phone}</td>
-                          <td>${result.contact.representative_email}</td>
-                          <td>
-                              <a class="contact-person-edit" data-dt="${JSON.stringify(result.contact)}" data-id="${result.contact.id}" href="#"><i class="fa fa-pencil-alt"></i></a>
-                              <a class="contact-person-delete" data-id="${result.contact.id}" href="#"><i class="fa fa-trash"></i></a>
-
-                          </td>`
-                    );
-
-                }else {
-                    $('#contact_person_body').append(tableRow);
-
+                if (editContact > 0) {
+                    $(`#contact_person_body tr[data-id=${result.contact.id}]`).replaceWith(newRow);
+                } else {
+                    $('#contact_person_body').append(newRow);
                 }
-
 
                 toastr.success(result.msg);
 
-                if (typeof(contact_table) != 'undefined') {
+                if (typeof contact_table !== 'undefined') {
                     contact_table.ajax.reload();
                 }
-
             } else {
                 toastr.error(result.msg);
             }
-        },
+        }
     });
 }
 

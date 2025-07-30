@@ -21,6 +21,15 @@
     @component('components.filters', ['title' => __('report.filters')])
         <div class="col-md-3">
             <div class="form-group">
+                {!! Form::label('stock_type_filter', __('product.product_stock_type') . ':') !!}
+                {!! Form::select('stock_type_filter', [
+                    'stock' => __('product.stock_product'), 
+                    'non_stock' => __('product.non_stock_product')
+                ], null, ['class' => 'form-control select2', 'style' => 'width:100%', 'id' => 'stock_type_filter', 'placeholder' => __('lang_v1.all')]); !!}
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="form-group">
                 {!! Form::label('type', __('product.product_type') . ':') !!}
                 {!! Form::select('type', ['single' => __('lang_v1.single'), 'variable' => __('lang_v1.variable'), 'combo' => __('lang_v1.combo')], null, ['class' => 'form-control select2', 'style' => 'width:100%', 'id' => 'product_list_filter_type', 'placeholder' => __('lang_v1.all')]); !!}
             </div>
@@ -180,6 +189,7 @@
                 "ajax": {
                     "url": "/products",
                     "data": function ( d ) {
+                        d.stock_type_filter = $('#stock_type_filter').val();
                         d.type = $('#product_list_filter_type').val();
                         d.category_id = $('#product_list_filter_category_id').val();
                         d.brand_id = $('#product_list_filter_brand_id').val();
@@ -397,7 +407,7 @@
                 });
             });
 
-            $(document).on('change', '#product_list_filter_type, #product_list_filter_category_id, #product_list_filter_brand_id, #product_list_filter_unit_id, #product_list_filter_tax_id, #location_id, #active_state, #repair_model_id', 
+            $(document).on('change', '#stock_type_filter, #product_list_filter_type, #product_list_filter_category_id, #product_list_filter_brand_id, #product_list_filter_unit_id, #product_list_filter_tax_id, #location_id, #active_state, #repair_model_id', 
                 function() {
                     if ($("#product_list_tab").hasClass('active')) {
                         product_table.ajax.reload();

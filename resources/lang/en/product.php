@@ -58,6 +58,11 @@ return [
     'import_products' => 'Import Products',
     'file_to_import' => 'File To Import',
     'file_imported_successfully' => 'File imported successfully',
-    'weight'=> 'Weight'
+    'weight'=> 'Weight',
+    'product_stock_type' => 'Product Stock Type',
+    'stock_type' => 'Stock Type',
+    'stock_type_help' => 'Select stock type for the product',
+    'stock_product' => 'Stock Product',
+    'non_stock_product' => 'Non-stock Product',
 
  ];

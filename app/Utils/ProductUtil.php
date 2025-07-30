@@ -940,29 +940,55 @@ class ProductUtil extends Util
      * @param int $business_id
      * @param int $product_id
      * @param array $product_racks
-     * @param array $product_racks
      *
      * @return void
+     * @throws \Exception
      */
     public function addRackDetails($business_id, $product_id, $product_racks)
     {
         if (!empty($product_racks)) {
             $data = [];
+
             foreach ($product_racks as $location_id => $detail) {
-                $data[] = ['business_id' => $business_id,
-                        'location_id' => $location_id,
-                        'product_id' => $product_id,
-                        'rack' => !empty($detail['rack']) ? $detail['rack'] : null,
-                        'row' => !empty($detail['row']) ? $detail['row'] : null,
-                        'position' => !empty($detail['position']) ? $detail['position'] : null,
-                        'created_at' => \Carbon::now()->toDateTimeString(),
-                        'updated_at' => \Carbon::now()->toDateTimeString()
-                    ];
+                if (empty($detail['rack']) && empty($detail['row']) && empty($detail['position']) && empty($detail['net_table'])) {
+                    continue; // Skip if all fields are empty
+                }
+
+                if (empty($location_id)) {
+                    throw new \Exception(__('lang_v1.location_id_is_required'));
+                }
+
+                if (empty($product_id)) {
+                    throw new \Exception(__('lang_v1.product_id_is_required'));
+                }
+
+                if (empty($business_id)) {
+                    throw new \Exception(__('lang_v1.business_id_is_required'));
+                }
+
+                $net_table_parts = [];
+                if (!empty($detail['net_table'])) {
+                    $net_table_parts = explode(' - ', $detail['net_table']);
+                }
+
+                $data[] = [
+                    'business_id' => $business_id,
+                    'location_id' => $location_id,
+                    'product_id' => $product_id,
+                    'rack' => $detail['rack'] ?? ($net_table_parts[0] ?? null),
+                    'row' => $detail['row'] ?? ($net_table_parts[1] ?? null),
+                    'position' => $detail['position'] ?? ($net_table_parts[2] ?? null),
+                    'created_at' => \Carbon::now()->toDateTimeString(),
+                    'updated_at' => \Carbon::now()->toDateTimeString()
+                ];
             }
 
-            ProductRack::insert($data);
+            if (!empty($data)) {
+                ProductRack::insert($data);
+            }
         }
     }
+
 
     /**
      * Get rack details.
@@ -1003,21 +1029,55 @@ class ProductUtil extends Util
      * @param array $product_racks
      *
      * @return void
+     * @throws \Exception
      */
     public function updateRackDetails($business_id, $product_id, $product_racks)
     {
+        if (empty($business_id)) {
+            throw new \Exception(__('lang_v1.business_id_is_required'));
+        }
+
+        if (empty($product_id)) {
+            throw new \Exception(__('lang_v1.product_id_is_required'));
+        }
+
         if (!empty($product_racks)) {
             foreach ($product_racks as $location_id => $details) {
-                ProductRack::where('business_id', $business_id)
-                    ->where('product_id', $product_id)
-                    ->where('location_id', $location_id)
-                    ->update(['rack' => !empty($details['rack']) ? $details['rack'] : null,
-                            'row' => !empty($details['row']) ? $details['row'] : null,
-                            'position' => !empty($details['position']) ? $details['position'] : null
-                        ]);
+                if (empty($location_id)) {
+                    throw new \Exception(__('lang_v1.location_id_is_required'));
+                }
+
+                // Skip update if all fields are empty
+                if (empty($details['rack']) && empty($details['row']) && empty($details['position']) && empty($details['net_table'])) {
+                    continue;
+                }
+
+                $net_table_parts = [];
+                if (!empty($details['net_table'])) {
+                    $net_table_parts = explode(' - ', $details['net_table']);
+                }
+
+                $rack = $details['rack'] ?? ($net_table_parts[0] ?? null);
+                $row = $details['row'] ?? ($net_table_parts[1] ?? null);
+                $position = $details['position'] ?? ($net_table_parts[2] ?? null);
+
+                ProductRack::updateOrInsert(
+                    [
+                        'business_id' => $business_id,
+                        'product_id' => $product_id,
+                        'location_id' => $location_id
+                    ],
+                    [
+                        'rack' => $rack,
+                        'row' => $row,
+                        'position' => $position,
+                        'updated_at' => \Carbon::now()->toDateTimeString()
+                    ]
+                );
             }
         }
     }
+
 
     /**
      * Retrieves selling price group price for a product variation.
