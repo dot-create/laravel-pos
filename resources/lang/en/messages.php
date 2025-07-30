@@ -45,4 +45,6 @@ return [
     'activate' => 'Activate',
     'deactivate' => 'Deactivate',
     'reject' => 'Reject',
+    'other' => 'Other',
+    'select' => 'Select',
 ];

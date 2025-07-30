@@ -469,7 +469,25 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/contact-persons-by-location/{location_id}', [App\Http\Controllers\PurchaseController::class, 'getContactPersonsByLocation']);
     Route::get('purchases/edit-received-modal/{id}', 'PurchaseController@editReceivedQtyModal')->name('purchase.edit_received_modal');
     Route::post('purchases/update-received/{id}', 'PurchaseController@updateReceivedQty')->name('purchase.update_received_qty');
+    
+    Route::resource('weight-units', 'WeightUnitController')->except(['show']);
+    Route::get('get-weight-units', 'WeightUnitController@getUnits')->name('weight-units.get');
 
+    Route::get('shipping-ways/get', 'ShippingWayController@get')->name('shipping-ways.get');
+    Route::resource('shipping-ways', 'ShippingWayController')->except(['show']);
+
+    // Rack Positions
+    Route::get('product-racks', 'ProductRackController@index')->name('product-racks.index');
+    Route::get('product-racks/get', 'ProductRackController@get')->name('product-racks.get');
+    Route::get('product-racks/create', 'ProductRackController@create');
+    Route::post('product-racks', 'ProductRackController@store');
+    Route::get('product-racks/{id}/edit', 'ProductRackController@edit');
+    Route::put('product-racks/{id}', 'ProductRackController@update');
+    Route::delete('product-racks/{id}', 'ProductRackController@destroy');
+    Route::get('product-racks/bulk-upload', 'ProductRackController@bulkUploadForm')->name('product-racks.bulk-upload.form');
+    Route::post('product-racks/bulk-upload', 'ProductRackController@bulkUpload')->name('product-racks.bulk-upload');
+    Route::get('/product-racks/storage-locations/{location_id}', 'ProductRackController@getStorageLocations')->name('product-racks.storage-locations');
+    
 });
 
 

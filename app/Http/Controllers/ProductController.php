@@ -1485,6 +1485,8 @@ class ProductController extends Controller
         if (!auth()->user()->can('product.create')) {
             abort(403, 'Unauthorized action.');
         }
+
+        // dd($request->all());
         
         try {
             $business_id = $request->session()->get('user.business_id');

@@ -157,7 +157,7 @@
         <div class="col-sm-8">
           <div class="form-group">
             {!! Form::label('product_description', __('lang_v1.product_description') . ':') !!}
-              {!! Form::textarea('product_description', null, ['class' => 'form-control']); !!}
+              {!! Form::textarea('product_description', null, ['class' => 'form-control', 'id' => 'product_description']); !!}
           </div>
         </div>
         <div class="clearfix"></div>
@@ -291,11 +291,20 @@
         var form = $("form#quick_add_product_form");
         var url = form.attr('action');
         form.find('button[type="submit"]').attr('disabled', true);
+
+        // Create a FormData object from the form
+        var formData = new FormData(form[0]);
+
+        // Ensure textarea value is included or updated
+        var description = tinymce.get('product_description').getContent();
+        formData.set('product_description', description);
+
         $.ajax({
             method: "POST",
             url: url,
-            dataType: 'json',
-            data: $(form).serialize(),
+            data: formData,
+            contentType: false,
+            processData: false,
             success: function(data){
                 $('.quick_add_product_modal').modal('hide');
                 if( data.success){

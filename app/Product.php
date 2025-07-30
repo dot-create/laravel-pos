@@ -219,4 +219,10 @@ class Product extends Model
     {
         return $this->hasMany(\App\ProductRack::class);
     }
+
+    public static function forDropdown($business_id)
+    {
+        return self::where('business_id', $business_id)->pluck('name', 'id');
+    }
+
 }

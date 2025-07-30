@@ -183,6 +183,30 @@ class AdminSidebarMenu
                             );
                         }
 
+                        if (auth()->user()->can('brand.view') || auth()->user()->can('brand.create')) {
+                            $sub->url(
+                                action('WeightUnitController@index'),
+                                __('Weight Unit'), 
+                                ['icon' => 'fa fas fa-balance-scale', 'active' => request()->segment(1) == 'weight-units']
+                            );
+                        }
+
+                        if (auth()->user()->can('shipping_ways.view') || auth()->user()->can('shipping_ways.create')) {
+                            $sub->url(
+                                action('ShippingWayController@index'),
+                                __('Shipping Way'), 
+                                ['icon' => 'fa fas fa-gem', 'active' => request()->segment(1) == 'shipping-ways']
+                            );
+                        }
+
+                        if (auth()->user()->can('product_rack.view') || auth()->user()->can('product_rack.create')) {
+                            $sub->url(
+                                action('ProductRackController@index'),
+                                __('Rack Position'),
+                                ['icon' => 'fa fas fa-th', 'active' => request()->segment(1) == 'product-racks']
+                            );
+                        }
+
                         $sub->url(
                             action('WarrantyController@index'),
                             __('lang_v1.warranties'),
