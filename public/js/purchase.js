@@ -994,53 +994,53 @@ $(document).ready(function() {
             quote_despute_table.ajax.reload();
         }
     );
-    quote_accept_table = $('#quote_accept_table').DataTable({
-        processing: true,
-        serverSide: true,
-        scrollY: "75vh",
-        scrollX:        true,
-        scrollCollapse: true,
-        ajax: {
-            url: '/request/quote/accepted',
-            data: function(d) {
-                if ($('#request_list_filter_customer_id').length) {
-                    d.customer_id = $('#request_list_filter_customer_id').val();
-                }
-                if ($('#purchase_list_filter_status').length) {
-                    d.status = $('#request_list_filter_status').val();
-                }
-                var start = '';
-                var end = '';
-                if ($('#request_list_filter_date_range').val()) {
-                    start = $('input#request_list_filter_date_range')
-                        .data('daterangepicker')
-                        .startDate.format('YYYY-MM-DD');
-                    end = $('input#request_list_filter_date_range')
-                        .data('daterangepicker')
-                        .endDate.format('YYYY-MM-DD');
-                }
-                d.start_date = start;
-                d.end_date = end;
-                d = __datatable_ajax_callback(d);
-            },
-        },
-        aaSorting: [[1, 'desc']],
-        columns: [
-            { data: 'date', name: 'date' },
-            { data: 'contact', name: 'contact' },
-            { data: 'ref_no', name: 'ref_no' ,searchable: true},
-            { data: 'availability_status', name: 'status' },
-            { data: 'action', name: 'action' },
-        ],
-        fnDrawCallback: function(oSettings) {
-            __currency_convert_recursively($('#request_table'));
-        },
-        createdRow: function(row, data, dataIndex) {
-            $(row)
-                .find('td:eq(5)')
-                .attr('class', 'clickable_td');
-        },
-    });
+    // quote_accept_table = $('#quote_accept_table').DataTable({
+    //     processing: true,
+    //     serverSide: true,
+    //     scrollY: "75vh",
+    //     scrollX:        true,
+    //     scrollCollapse: true,
+    //     ajax: {
+    //         url: '/request/quote/accepted',
+    //         data: function(d) {
+    //             if ($('#request_list_filter_customer_id').length) {
+    //                 d.customer_id = $('#request_list_filter_customer_id').val();
+    //             }
+    //             if ($('#purchase_list_filter_status').length) {
+    //                 d.status = $('#request_list_filter_status').val();
+    //             }
+    //             var start = '';
+    //             var end = '';
+    //             if ($('#request_list_filter_date_range').val()) {
+    //                 start = $('input#request_list_filter_date_range')
+    //                     .data('daterangepicker')
+    //                     .startDate.format('YYYY-MM-DD');
+    //                 end = $('input#request_list_filter_date_range')
+    //                     .data('daterangepicker')
+    //                     .endDate.format('YYYY-MM-DD');
+    //             }
+    //             d.start_date = start;
+    //             d.end_date = end;
+    //             d = __datatable_ajax_callback(d);
+    //         },
+    //     },
+    //     aaSorting: [[1, 'desc']],
+    //     columns: [
+    //         { data: 'date', name: 'date' },
+    //         { data: 'contact', name: 'contact' },
+    //         { data: 'ref_no', name: 'ref_no' ,searchable: true},
+    //         { data: 'availability_status', name: 'status' },
+    //         { data: 'action', name: 'action' },
+    //     ],
+    //     fnDrawCallback: function(oSettings) {
+    //         __currency_convert_recursively($('#request_table'));
+    //     },
+    //     createdRow: function(row, data, dataIndex) {
+    //         $(row)
+    //             .find('td:eq(5)')
+    //             .attr('class', 'clickable_td');
+    //     },
+    // });
     $(document).on(
         'change',
         '#quote_accept_table,\

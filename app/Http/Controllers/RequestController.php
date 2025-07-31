@@ -966,61 +966,133 @@ class RequestController extends Controller
         return view('sell.request.list_quote_accept')
             ->with(compact('requestItems','business_locations', 'suppliers', 'orderStatuses','status'));
     }
-    public function acceptQuote($id){
+
+    // Accept Quote Functionality
+    public function acceptQuote($id) {
         $business_id = request()->session()->get('user.business_id');
         $request = CustomerRequest::where('id', $id)
-                ->with([
-                    'contact:id,name',
-                    'items' => function ($query) {
-                        $query->leftJoin('contacts as supplier1', 'supplier1.id', '=', 'request_items.supplier1_id')
-                            ->leftJoin('contacts as supplier2', 'supplier2.id', '=', 'request_items.supplier2_id')
-                            ->leftJoin('contacts as supplier3', 'supplier3.id', '=', 'request_items.supplier3_id')
-                            ->leftJoin('contacts as supplier4', 'supplier4.id', '=', 'request_items.supplier4_id')
-                            ->addSelect([
-                                'request_items.*',
-                                \DB::raw("
-                                    CASE 
-                                        WHEN request_items.is_best_supplier1 = 1 THEN supplier1.supplier_business_name
-                                        WHEN request_items.is_best_supplier2 = 1 THEN supplier2.supplier_business_name
-                                        WHEN request_items.is_best_supplier3 = 1 THEN supplier3.supplier_business_name
-                                        WHEN request_items.is_best_supplier4 = 1 THEN supplier4.supplier_business_name
-                                        ELSE 'No Best Supplier'
-                                    END AS best_supplier_name
-                                ")
-                            ]);
-                    },
-                    'items.variation',
-                    'items.variation.variation_location_details'
-                ]) // Load contact name
-                ->first();
-        $business_locations = BusinessLocation::forDropdown($business_id,false,true);
+            ->with([
+                'contact:id,name',
+                'items' => function ($query) {
+                    $query->leftJoin('contacts as supplier1', 'supplier1.id', '=', 'request_items.supplier1_id')
+                        ->leftJoin('contacts as supplier2', 'supplier2.id', '=', 'request_items.supplier2_id')
+                        ->leftJoin('contacts as supplier3', 'supplier3.id', '=', 'request_items.supplier3_id')
+                        ->leftJoin('contacts as supplier4', 'supplier4.id', '=', 'request_items.supplier4_id')
+                        ->addSelect([
+                            'request_items.*',
+                            \DB::raw("
+                                CASE 
+                                    WHEN request_items.is_best_supplier1 = 1 THEN supplier1.supplier_business_name
+                                    WHEN request_items.is_best_supplier2 = 1 THEN supplier2.supplier_business_name
+                                    WHEN request_items.is_best_supplier3 = 1 THEN supplier3.supplier_business_name
+                                    WHEN request_items.is_best_supplier4 = 1 THEN supplier4.supplier_business_name
+                                    ELSE 'No Best Supplier'
+                                END AS best_supplier_name
+                            ")
+                        ]);
+                },
+                'items.variation',
+                'items.variation.variation_location_details'
+            ])
+            ->first();
+        
+        // Add stock data to each item
+        foreach ($request->items as $item) {
+            $stockData = $this->productUtil->getVariationStockDetails(
+                $business_id, 
+                $item->variation_id, 
+                $request->business_location_id
+            );
+            
+            $item->stock_on_hand_hs = $stockData['stock_on_hand'];
+            $item->in_transit_qty_hs = $stockData['in_transit'];
+            $item->committed_qty_hs = $stockData['committed'];
+            
+            // Calculate available quantity
+            $item->available_qty = $stockData['stock_on_hand'] + 
+                                $item->approved_ipr_qty_hs + 
+                                $stockData['in_transit'] - 
+                                $item->quantity;
+            
+            // Determine status_purchase based on stock availability
+            $item->status_purchase = ($item->available_qty >= 0) ? 'Not Necessary IPR' : 'Requested';
+        }
+        
+        $business_locations = BusinessLocation::forDropdown($business_id, false, true);
         $bl_attributes = $business_locations['attributes'];
         $orderStatuses = $this->productUtil->requestStatuses();
-        $items=$request->items;
+        $items = $request->items;
         $currency_details = $this->transactionUtil->purchaseCurrencyDetails($business_id);
         
         return view('sell.request.quote_accept')
-            ->with(compact('request','business_locations','orderStatuses','bl_attributes','items','currency_details','business_id'));
+            ->with(compact('request', 'business_locations', 'orderStatuses', 'bl_attributes', 'items', 'currency_details', 'business_id'));
     }
-    public function accepteQuoteForm(Request $request,$id){
-        $CustomerRequest=CustomerRequest::where('id',$id)->first();
-        if($CustomerRequest){
-            for($i=0;$i < count($request->itemId); $i++){
-                $item=RequestItem::where('id',$request->itemId[$i])->first();
-                $item->accepted_qty=$request->accepted_qty[$i];
-                // $item->backorder_qty=$request->backorder_qty[$i];
-                // $item->invoice_qty=$request->invoice_qty[$i];
-                $item->po_number=$request->po_number[$i];
-                $item->status='AcceptedQuote';
+
+    // Accept Quote Form Submission
+    public function accepteQuoteForm(Request $request, $id) {
+        $CustomerRequest = CustomerRequest::where('id', $id)->first();
+        if ($CustomerRequest) {
+            $allItemsHaveEnoughStock = true;
+            
+            for ($i = 0; $i < count($request->itemId); $i++) {
+                $item = RequestItem::where('id', $request->itemId[$i])->first();
+                
+                // Update all fields
+                $item->accepted_qty = $request->accepted_qty[$i];
+                $item->order_date = $request->order_date[$i];
+                $item->po_number = $request->po_number[$i];
+                $item->cso_purchasing_req_no = $request->cso_purchasing_req_no[$i];
+                $item->ipr_qty = $request->ipr_qty[$i] ?? 0;
+                $item->stock_on_hand_hs = $request->stock_on_hand_hs[$i] ?? 0;
+                $item->approved_ipr_qty_hs = $request->approved_ipr_qty_hs[$i] ?? 0;
+                $item->in_transit_qty_hs = $request->in_transit_qty_hs[$i] ?? 0;
+                $item->committed_qty_hs = $request->committed_qty_hs[$i] ?? 0;
+                $item->invoiced_for_this_req = $request->invoiced_for_this_req[$i] ?? 0;
+                $item->pending_invoice = $request->pending_invoice[$i] ?? 0;
+                $item->committed_for_this_order = $request->committed_for_this_order[$i] ?? 0;
+                $item->received_for_this_order = $request->received_for_this_order[$i] ?? 0;
+                $item->internal_req_qty = $request->internal_req_qty[$i] ?? 0;
+                
+                // Calculate available quantity
+                $item->available_qty = $item->stock_on_hand_hs + 
+                                    $item->approved_ipr_qty_hs + 
+                                    $item->in_transit_qty_hs - 
+                                    $item->quantity;
+                
+                // Calculate other derived values
+                $item->qty_available_for_invoice = $item->available_qty;
+                $item->suggested_qty_to_request = max(0, $item->quantity - $item->available_qty);
+                $item->live_available_for_this_order = $item->available_qty;
+                
+                // Determine status_purchase
+                $item->status_purchase = ($item->available_qty >= 0) ? 'Not Necessary IPR' : 'Requested';
+                
+                // Update status_invoice based on invoiced quantities
+                if ($item->invoiced_for_this_req >= $item->accepted_qty) {
+                    $item->status_invoice = 'Invoiced';
+                } else if ($item->invoiced_for_this_req > 0) {
+                    $item->status_invoice = 'Partial Invoiced';
+                } else {
+                    $item->status_invoice = 'None invoiced';
+                }
+                
+                $item->status = 'AcceptedQuote';
                 $item->save();
+                
+                // Check if all items have enough stock
+                if ($item->status_purchase === 'Requested') {
+                    $allItemsHaveEnoughStock = false;
+                }
             }
+            
+            // Update request status based on items
+            $CustomerRequest->status = $allItemsHaveEnoughStock ? "AcceptedQuote" : "PartialStock";
             $CustomerRequest->request_note = $request->globale_note;
-            $CustomerRequest->status="AcceptedQuote";
             $CustomerRequest->save();
+        } else {
+            return back()->with(['error' => 'Not found']);
         }
-        else{
-            return back()->with(['error'=>'Not found']);
-        }
+        
         return redirect()->route('request.list.quote.accept');
     }
     public function listDisputed(){

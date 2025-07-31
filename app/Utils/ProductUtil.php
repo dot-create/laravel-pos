@@ -1962,17 +1962,18 @@ class ProductUtil extends Util
 
         return $combo_variations;
     }
-
+    
+  // In ProductUtil.php
     public function getVariationStockDetails($business_id, $variation_id, $location_id)
     {
-          $purchase_details = Variation::join('products as p', 'p.id', '=', 'variations.product_id')
+        // Get purchase details with transaction breakdown
+        $purchase_details = Variation::join('products as p', 'p.id', '=', 'variations.product_id')
                     ->join('units', 'p.unit_id', '=', 'units.id')
                     ->leftjoin('units as u', 'p.secondary_unit_id', '=', 'u.id')
                     ->leftjoin('product_variations as pv', 'variations.product_variation_id', '=', 'pv.id')
                     ->leftjoin('purchase_lines as pl', 'pl.variation_id', '=', 'variations.id')
                     ->leftjoin('transactions as t', 'pl.transaction_id', '=', 't.id')
                     ->where('t.recieve_location_id', $location_id)
-                    //->where('t.status', 'received')
                     ->where('p.business_id', $business_id)
                     ->where('variations.id', $variation_id)
                     ->select(
@@ -1992,9 +1993,10 @@ class ProductUtil extends Util
                         'variations.name as variation_name',
                         'variations.id as variation_id'
                     )
-                  ->get()->first();
+                ->first();
 
-            $sell_details = Variation::join('products as p', 'p.id', '=', 'variations.product_id')
+        // Get sell details
+        $sell_details = Variation::join('products as p', 'p.id', '=', 'variations.product_id')
                     ->leftjoin('transaction_sell_lines as sl', 'sl.variation_id', '=', 'variations.id')
                     ->join('transactions as t', 'sl.transaction_id', '=', 't.id')
                     ->where('t.location_id', $location_id)
@@ -2006,32 +2008,56 @@ class ProductUtil extends Util
                         DB::raw("SUM(IF(t.type='sell', sl.quantity_returned, 0)) as total_sell_return"),
                         DB::raw("SUM(IF(t.type='sell_transfer', sl.quantity, 0)) as total_sell_transfer")
                     )
-                  ->get()->first();
+                ->first();
 
-        $current_stock = VariationLocationDetails::where('variation_id', 
-                                            $variation_id)
-                                        ->where('location_id', $location_id)
-                                        ->first();
+        // Get current stock and committed quantities from variation location details
+        $current_stock = VariationLocationDetails::where('variation_id', $variation_id)
+                                            ->where('location_id', $location_id)
+                                            ->first();
 
-        if ($purchase_details->type == 'variable') {
+        // Get in transit quantity (from purchase orders with status "shipped" but not received)
+        $in_transit = PurchaseLine::join('transactions as T', 'purchase_lines.transaction_id', '=', 'T.id')
+            ->where('T.business_id', $business_id)
+            ->where('T.location_id', $location_id)
+            ->where('T.type', 'purchase')
+            ->where('T.status', 'shipped')
+            ->where('purchase_lines.variation_id', $variation_id)
+            ->sum('purchase_lines.quantity_remaining');
+
+        // Build product name based on type
+        if ($purchase_details && $purchase_details->type == 'variable') {
             $product_name = $purchase_details->product . ' - ' . $purchase_details->product_variation . ' - ' . $purchase_details->variation_name . ' (' . $purchase_details->sub_sku . ')';
         } else {
-            $product_name = $purchase_details->product . ' (' . $purchase_details->sku . ')';
+            $product_name = $purchase_details ? $purchase_details->product . ' (' . $purchase_details->sku . ')' : '';
         }
 
+        // Prepare comprehensive output combining both approaches
         $output = [
+            // Basic stock overview (from first function)
+            'stock_on_hand' => $current_stock->qty_available ?? 0,
+            'in_transit' => $in_transit ?? 0,
+            'committed' => $current_stock->qty_reserved ?? 0,
+            
+            // Detailed breakdown (from second function)
             'variation' => $product_name,
-            'unit' => $purchase_details->unit,
-            'second_unit' => $purchase_details->second_unit,
-            'total_purchase' => $purchase_details->total_purchase,
-            'total_purchase_return' => $purchase_details->total_purchase_return,
-            'total_adjusted' => $purchase_details->total_adjusted,
-            'total_opening_stock' => $purchase_details->total_opening_stock,
-            'total_purchase_transfer' => $purchase_details->total_purchase_transfer,
-            'total_sold' => $sell_details->total_sold,
-            'total_sell_return' => $sell_details->total_sell_return,
-            'total_sell_transfer' => $sell_details->total_sell_transfer,
-            'current_stock' => $current_stock->qty_available ?? 0
+            'unit' => $purchase_details->unit ?? '',
+            'second_unit' => $purchase_details->second_unit ?? '',
+            'total_purchase' => $purchase_details->total_purchase ?? 0,
+            'total_purchase_return' => $purchase_details->total_purchase_return ?? 0,
+            'total_adjusted' => $purchase_details->total_adjusted ?? 0,
+            'total_opening_stock' => $purchase_details->total_opening_stock ?? 0,
+            'total_purchase_transfer' => $purchase_details->total_purchase_transfer ?? 0,
+            'total_sold' => $sell_details->total_sold ?? 0,
+            'total_sell_return' => $sell_details->total_sell_return ?? 0,
+            'total_sell_transfer' => $sell_details->total_sell_transfer ?? 0,
+            'current_stock' => $current_stock->qty_available ?? 0, // Kept for backward compatibility
+            
+            // Additional product information
+            'product_id' => $purchase_details->product_id ?? null,
+            'variation_id' => $variation_id,
+            'sku' => $purchase_details->sku ?? '',
+            'sub_sku' => $purchase_details->sub_sku ?? '',
+            'product_type' => $purchase_details->type ?? ''
         ];
 
         return $output;

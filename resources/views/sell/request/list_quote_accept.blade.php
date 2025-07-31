@@ -7,12 +7,7 @@
 <section class="content-header no-print">
     <h1>
         List Accept Quote
-        
     </h1>
-    <!-- <ol class="breadcrumb">
-        <li><a href="#"><i class="fa fa-dashboard"></i> Level</a></li>
-        <li class="active">Here</li>
-    </ol> -->
 </section>
 
 <!-- Main content -->
@@ -24,12 +19,6 @@
                 {!! Form::select('request_list_filter_customer_id', $suppliers, null, ['class' => 'form-control select2', 'style' => 'width:100%', 'placeholder' => __('lang_v1.all')]); !!}
             </div>
         </div>
-        <!-- <div class="col-md-3">
-            <div class="form-group">
-                {!! Form::label('request_list_filter_sku_model', __('request.search_by_SKU/Model') . ':') !!}
-                {!! Form::text('request_list_filter_sku_model', null, ['placeholder' => __('request.search_by_SKU/Model'), 'class' => 'form-control']); !!}
-            </div>
-        </div> -->
         <div class="col-md-3">
             <div class="form-group">
                 {!! Form::label('purchase_list_filter_date_range', __('report.date_range') . ':') !!}
@@ -43,10 +32,12 @@
         <table class="table table-bordered table-striped ajax_view" id="quote_accept_table" style="width: 100%;">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Contact</th>
+                    <th>@lang('messages.date')</th>
+                    <th>@lang('contact.customer')</th>
                     <th>@lang('request.ref_no')</th>
                     <th>@lang('request.status')</th>
+                    <th>@lang('request.stock_status')</th>
+                    <th>@lang('request.invoice_status')</th>
                     <th>@lang('request.action')</th>
                 </tr>
             </thead>
@@ -54,8 +45,9 @@
     </table>
     @endcomponent
 
+    <!-- Modals remain the same -->
     <div class="modal fade product_modal" tabindex="-1" role="dialog" 
-    	aria-labelledby="gridSystemModalLabel">
+        aria-labelledby="gridSystemModalLabel">
     </div>
 
     <div class="modal fade payment_modal" tabindex="-1" role="dialog" 
@@ -72,59 +64,119 @@
 
 <section id="receipt_section" class="print_section"></section>
 
-<!-- /.content -->
 @stop
 @section('javascript')
 <script src="{{ asset('js/purchase.js?v=' . $asset_v) }}"></script>
 <script src="{{ asset('js/payment.js?v=' . $asset_v) }}"></script>
 <script>
-        //Date range as a button
-    $('#purchase_list_filter_date_range').daterangepicker(
-        dateRangeSettings,
-        function (start, end) {
-            $('#purchase_list_filter_date_range').val(start.format(moment_date_format) + ' ~ ' + end.format(moment_date_format));
-           purchase_table.ajax.reload();
-        }
-    );
-    $('#purchase_list_filter_date_range').on('cancel.daterangepicker', function(ev, picker) {
-        $('#purchase_list_filter_date_range').val('');
-        purchase_table.ajax.reload();
-    });
-
-    $(document).on('click', '.update_status', function(e){
-        e.preventDefault();
-        $('#update_purchase_status_form').find('#status').val($(this).data('status'));
-        $('#update_purchase_status_form').find('#purchase_id').val($(this).data('purchase_id'));
-        $('#update_purchase_status_modal').modal('show');
-    });
-
-    $(document).on('submit', '#update_purchase_status_form', function(e){
-        e.preventDefault();
-        var form = $(this);
-        var data = form.serialize();
-
-        $.ajax({
-            method: 'POST',
-            url: $(this).attr('action'),
-            dataType: 'json',
-            data: data,
-            beforeSend: function(xhr) {
-                __disable_submit_button(form.find('button[type="submit"]'));
-            },
-            success: function(result) {
-                if (result.success == true) {
-                    $('#update_purchase_status_modal').modal('hide');
-                    toastr.success(result.msg);
-                    purchase_table.ajax.reload();
-                    $('#update_purchase_status_form')
-                        .find('button[type="submit"]')
-                        .attr('disabled', false);
-                } else {
-                    toastr.error(result.msg);
+    // Initialize DataTable with new columns
+    $(document).ready(function() {
+        var quote_accept_table = $('#quote_accept_table').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: '/request/quote/accepted', // '{{ action("RequestController@acceptedQuote") }}',
+                data: function(d) {
+                    if($('#request_list_filter_customer_id').length) {
+                        d.customer_id = $('#request_list_filter_customer_id').val();
+                    }
+                    if($('#purchase_list_filter_date_range').val()) {
+                        d.start_date = $('#purchase_list_filter_date_range')
+                            .data('daterangepicker')
+                            .startDate.format('YYYY-MM-DD');
+                        d.end_date = $('#purchase_list_filter_date_range')
+                            .data('daterangepicker')
+                            .endDate.format('YYYY-MM-DD');
+                    }
                 }
             },
+            columns: [
+                { data: 'date', name: 'date' },
+                { data: 'contact', name: 'contact' },
+                { data: 'ref_no', name: 'ref_no' },
+                { data: 'availability_status', name: 'status' },
+                { 
+                    data: null,
+                    render: function(data, type, row) {
+                        var status = 'Requested';
+                        var class_name = 'label-warning';
+                        
+                        // Check if all items have "Not Necessary IPR" status
+                        if (row.items && row.items.length > 0) {
+                            var allNotNecessary = true;
+                            for (var i = 0; i < row.items.length; i++) {
+                                if (row.items[i].status_purchase !== 'Not Necessary IPR') {
+                                    allNotNecessary = false;
+                                    break;
+                                }
+                            }
+                            if (allNotNecessary) {
+                                status = 'Not Necessary IPR';
+                                class_name = 'label-success';
+                            }
+                        }
+                        
+                        return '<span class="label ' + class_name + '">' + status + '</span>';
+                    },
+                    orderable: false,
+                    searchable: false
+                },
+                { 
+                    data: null,
+                    render: function(data, type, row) {
+                        var status = 'None invoiced';
+                        var class_name = 'label-default';
+                        
+                        // Check invoice status across items
+                        if (row.items && row.items.length > 0) {
+                            var allInvoiced = true;
+                            var hasPartial = false;
+                            
+                            for (var i = 0; i < row.items.length; i++) {
+                                if (row.items[i].status_invoice === 'None invoiced') {
+                                    allInvoiced = false;
+                                } else if (row.items[i].status_invoice === 'Partial Invoiced') {
+                                    allInvoiced = false;
+                                    hasPartial = true;
+                                }
+                            }
+                            
+                            if (allInvoiced) {
+                                status = 'Invoiced';
+                                class_name = 'label-success';
+                            } else if (hasPartial) {
+                                status = 'Partial Invoiced';
+                                class_name = 'label-warning';
+                            }
+                        }
+                        
+                        return '<span class="label ' + class_name + '">' + status + '</span>';
+                    },
+                    orderable: false,
+                    searchable: false
+                },
+                { data: 'action', name: 'action', orderable: false, searchable: false }
+            ]
+        });
+        
+        // Date range filter
+        $('#purchase_list_filter_date_range').daterangepicker(
+            dateRangeSettings,
+            function (start, end) {
+                $('#purchase_list_filter_date_range').val(start.format(moment_date_format) + ' ~ ' + end.format(moment_date_format));
+                quote_accept_table.ajax.reload();
+            }
+        );
+        
+        $('#purchase_list_filter_date_range').on('cancel.daterangepicker', function(ev, picker) {
+            $('#purchase_list_filter_date_range').val('');
+            quote_accept_table.ajax.reload();
+        });
+        
+        // Customer filter
+        $('#request_list_filter_customer_id').change(function() {
+            quote_accept_table.ajax.reload();
         });
     });
 </script>
-	
 @endsection
