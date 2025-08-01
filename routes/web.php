@@ -182,7 +182,9 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     // Route::get('requests/listPendingRequests', 'PurchaseController@listPendingRequests')->name('requests');
     // Route::get('requests/readyTodraft', 'PurchaseController@readyTodraft')->name('requests');
     // Route::get('requests/draftRequest', 'PurchaseController@draftRequest')->name('requests');
-    // Route::get('requests/listQuoteRequest', 'PurchaseController@listQuoteRequest')->name('requests');
+    // Route::get('requests/listQuoteRequest', 'PurchaseController@listQuoteRequest')->name('requests.listQuoteRequest');
+    // Route::get('requests/editRequest', 'PurchaseController@editRequest')->name('requests.editRequest');
+    // Route::get('requests/{id}/create-quote', 'PurchaseController@createQuote')->name('request.create_quote');
     // Route::get('requests/acceptedQuoteRequest', 'PurchaseController@acceptedQuoteRequest')->name('requests');
     // Route::get('requests/rejectedQuoteRequest', 'PurchaseController@rejectedQuoteRequest')->name('requests');
     // Route::get('requests/disputeQuoteRequest', 'PurchaseController@disputeQuoteRequest')->name('requests');

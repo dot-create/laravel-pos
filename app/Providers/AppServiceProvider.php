@@ -130,6 +130,8 @@ class AppServiceProvider extends ServiceProvider
                 echo 'bg-red';
             }elseif ($status == 'received') {
                 echo 'bg-light-green';
+            } elseif ($status == 'partial') {
+                echo 'bg-yellow';
             }?>";
         });
 

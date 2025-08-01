@@ -33,6 +33,7 @@
               </td>
             @endif
             <td>
+              <input type="hidden" name="lines[{{ $line->id }}][purchase_quantity]" value="{{ $line->quantity }}">
               {!! Form::number('lines['.$line->id.'][received_quantity]', $line->received_quantity, ['class' => 'form-control', 'step' => 'any']) !!}
             </td>
           </tr>

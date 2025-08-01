@@ -1711,6 +1711,37 @@ class PurchaseController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $all_received = true;
+        $any_received = false;
+        $all_blank = true;
+
+        foreach ($request->input('purchases') as $purchase_line) {
+            $ordered_qty = $purchase_line['quantity'] ?? 0;
+            $received_qty = $purchase_line['received_quantity'] ?? null;
+
+            if (!is_null($received_qty) && $received_qty !== '') {
+                $all_blank = false;
+                $any_received = true;
+
+                if ($received_qty < $ordered_qty) {
+                    $all_received = false;
+                }
+            } else {
+                $all_received = false;
+            }
+        }
+
+        // Set status based on logic
+        if ($all_blank) {
+            $request->merge(['status' => 'ordered']);
+        } elseif ($all_received) {
+            $request->merge(['status' => 'received']);
+        } elseif ($any_received) {
+            $request->merge(['status' => 'partial']);
+        } else {
+            $request->merge(['status' => 'pending']);
+        }
+
         try {
             $transaction = Transaction::findOrFail($id);
             //Validate document size
@@ -2775,7 +2806,41 @@ class PurchaseController extends Controller
 
     public function updateReceivedQty(Request $request, $id)
     {
+        $all_received = true;
+        $any_received = false;
+        $all_blank = true;
+
+        foreach ($request->input('lines') as $purchase_line) {
+            $ordered_qty = $purchase_line['purchase_quantity'] ?? 0;
+            $received_qty = $purchase_line['received_quantity'] ?? null;
+
+            if (!is_null($received_qty) && $received_qty !== '') {
+                $all_blank = false;
+                $any_received = true;
+
+                if ($received_qty < $ordered_qty) {
+                    $all_received = false;
+                }
+            } else {
+                $all_received = false;
+            }
+        }
+
+        // Set status based on logic
+        if ($all_blank) {
+            $request->merge(['status' => 'ordered']);
+        } elseif ($all_received) {
+            $request->merge(['status' => 'received']);
+        } elseif ($any_received) {
+            $request->merge(['status' => 'partial']);
+        } else {
+            $request->merge(['status' => 'pending']);
+        }
+
         $purchase = Transaction::findOrFail($id);
+
+        $purchase->status = $request->input('status');
+        $purchase->save();
 
         if ($request->has('lines')) {
             foreach ($request->input('lines') as $line_id => $line_data) {

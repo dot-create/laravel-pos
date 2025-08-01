@@ -74,6 +74,16 @@
             </div>
         </div>
 
+        <div class="col-md-3">
+            <div class="form-group">
+                {!! Form::label('request_list_filter_quotation_ref', __('request.quotation_reference') . ':') !!}
+                {!! Form::text('request_list_filter_quotation_ref', null, [
+                    'placeholder' => __('request.search_by_quotation_ref'),
+                    'class' => 'form-control'
+                ]) !!}
+            </div>
+        </div>
+
     @endcomponent
 
     @component('components.widget', ['class' => 'box-primary', 'title' => __('request.all_requests')])

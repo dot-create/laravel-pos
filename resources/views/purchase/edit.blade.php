@@ -85,7 +85,12 @@
               <div class="form-group">
                 {!! Form::label('location_id', __('purchase.business_location').':*') !!}
                 @show_tooltip(__('tooltip.purchase_location'))
-                {!! Form::select('location_id', $business_locations, $purchase->location_id, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select'), 'disabled']); !!}
+                {!! Form::select('status', $orderStatuses, $purchase->status, [
+                    'class' => 'form-control select2',
+                    'placeholder' => __('messages.please_select'),
+                    'required',
+                    'disabled' => true // disable editing
+                ]) !!}
               </div>
             </div>
 
@@ -543,7 +548,58 @@
       update_table_total();
       update_grand_total();
       __page_leave_confirmation('#add_purchase_form');
-    });
+    
+      function checkReceivedQuantities() {
+          let allMatched = true;
+
+          $('table#purchase_entry_table tbody tr').each(function() {
+              const quantityOrdered = parseFloat($(this).find('.purchase_quantity').val() || 0);
+              const quantityReceived = parseFloat($(this).find('.received_quantity').val() || 0);
+              if (quantityOrdered !== quantityReceived) {
+                  allMatched = false;
+              }
+          });
+
+          if (allMatched) {
+              // Automatically set status to Received
+              $('#status').val('received').trigger('change');
+          }
+      }
+
+      // Run check when quantity fields change
+      $(document).on('change', '.purchase_quantity, .received_quantity', function() {
+          checkReceivedQuantities();
+      });
+
+      $('#submit_purchase_form').click(function(e) {
+          const currentDate = new Date();
+          const targetDate = new Date('2025-07-31');
+
+          let hasMismatch = false;
+          $('table#purchase_entry_table tbody tr').each(function() {
+              const quantityOrdered = parseFloat($(this).find('.purchase_quantity').val() || 0);
+              const quantityReceived = parseFloat($(this).find('.received_quantity').val() || 0);
+              if (quantityOrdered !== quantityReceived) {
+                  hasMismatch = true;
+              }
+          });
+
+          const selectedStatus = $('#status').val();
+
+          if (selectedStatus === 'received' && hasMismatch) {
+              // if (currentDate.toISOString().slice(0, 10) === targetDate.toISOString().slice(0, 10)) {
+                  toastr.error("Cannot mark as 'Received' when received quantities do not match ordered quantities.");
+              // }
+              e.preventDefault();
+          } else {
+              $('#add_purchase_form').submit();
+          }
+      });
+
+      // Run initial check on page load
+      checkReceivedQuantities();
+  });
+
   </script>
   @include('purchase.partials.keyboard_shortcuts')
 @endsection
