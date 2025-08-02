@@ -177,6 +177,64 @@
         $('#request_list_filter_customer_id').change(function() {
             quote_accept_table.ajax.reload();
         });
+
+        $(document).on('click', '.btn-inf-report', function(e) {
+            e.preventDefault();
+            $('.request_inf_report_modal').remove(); // Remove existing modal
+            
+            // Create new modal container
+            $('body').append('<div class="modal fade request_inf_report_modal" tabindex="-1" role="dialog"></div>');
+            
+            var container = '.request_inf_report_modal';
+            $.ajax({
+                url: $(this).attr('href'),
+                dataType: 'html',
+                success: function(response) {
+                    $(container).html(response).modal('show');
+                    
+                    // Re-attach event handlers
+                    $(container).find('.status-purchase-select').change(function() {
+                        const itemId = $(this).data('item-id');
+                        const status = $(this).val();
+                        const row = $(this).closest('tr');
+                        
+                        if (status === 'Requested') {
+                            row.find('.cso-fields').show();
+                        } else {
+                            row.find('.cso-fields').hide();
+                        }
+                    });
+                },
+                error: function(xhr) {
+                    toastr.error(__('messages.something_went_wrong'));
+                }
+            });
+        });
+
+        // Form submission handling
+        $(document).on('submit', '#inf-report-form', function(e) {
+            e.preventDefault();
+            const formData = $(this).serialize();
+            
+            $.ajax({
+                url: $(this).attr('action'),
+                method: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        $('.request_inf_report_modal').modal('hide');
+                        // Optional: Refresh DataTable
+                        quote_accept_table.ajax.reload(null, false);
+                    } else {
+                        toastr.error(response.message);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(__('messages.something_went_wrong'));
+                }
+            });
+        });
     });
 </script>
 @endsection

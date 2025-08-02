@@ -490,6 +490,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::post('product-racks/bulk-upload', 'ProductRackController@bulkUpload')->name('product-racks.bulk-upload');
     Route::get('/product-racks/storage-locations/{location_id}', 'ProductRackController@getStorageLocations')->name('product-racks.storage-locations');
     
+    Route::get('request/inf-report/{id}', 'RequestController@requestInfReport')->name('request.inf.report');
+    Route::post('request/update-inf-report', 'RequestController@updateInfReport')->name('request.update.inf.report');
 });
 
 
