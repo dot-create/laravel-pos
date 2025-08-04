@@ -229,6 +229,23 @@
 		$('#purchase_box').addClass('hide');
 	});
 
+  // Enhanced duplicate expense handling
+  if (window.location.search.includes('d=')) {
+      setTimeout(function() {
+          // Update currency for duplicated expense
+          $('#location_id').trigger('change');
+          // Reset dates to current
+          var currentDate = moment().format(moment_date_format + ' ' + moment_time_format);
+          $('#expense_transaction_date').val(currentDate);
+      }, 1000);
+  }
+
+  // Initialize datetime picker
+  $('#expense_transaction_date').datetimepicker({
+      format: moment_date_format + ' ' + moment_time_format,
+      ignoreReadonly: true,
+      defaultDate: new Date()
+  });
   __page_leave_confirmation('#add_expense_form');
 </script>
 @endsection

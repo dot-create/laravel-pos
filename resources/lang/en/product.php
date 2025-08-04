@@ -64,5 +64,6 @@ return [
     'stock_type_help' => 'Select stock type for the product',
     'stock_product' => 'Stock Product',
     'non_stock_product' => 'Non-stock Product',
-
+    'description' => 'Description',
+    'product_description' => 'Product Description',
  ];

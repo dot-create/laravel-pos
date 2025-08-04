@@ -554,6 +554,7 @@ class ExpenseController extends Controller
             
         } catch (\Exception $e) {
             \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
+            dd($e->getMessage());
             $output = ['success' => 0, 'msg' => __('messages.something_went_wrong')];
         }
 

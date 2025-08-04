@@ -900,6 +900,8 @@ class RequestController extends Controller
             $acceptUrl = route('request.quote.accept', [$request->id]);
             $rejectUrl = route('request.quote.reject', [$request->id]);
             $printUrl=route('request.quote.print', [$request->id]);
+            $invoicingUrl = route('request.invoicing.inf.report', [$request->id]);
+            $purchasingUrl = route('request.purchasing.inf.report', [$request->id]);
             // $printUrl='#';
     
             $actionBtn = '<div class="btn-group">
@@ -908,11 +910,13 @@ class RequestController extends Controller
                                 ' . __("messages.actions") . '
                                 <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-left" role="menu">';
+                            <ul class="dropdown-menu dropdown-menu-right" role="menu">';
 
-            $infReportUrl = route('request.inf.report', [$request->id]);
-            $actionBtn .= '<li><a href="' . $infReportUrl . '" class="btn-inf-report">
-                <i class="fas fa-file-alt"></i> ' . __("request.inf_report") . '</a></li>';
+            $actionBtn .= '<li><a href="' . $invoicingUrl . '" class="btn-invoicing-inf">
+                <i class="fas fa-file-invoice"></i> ' . __("request.invoicing_inf_report") . '</a></li>';
+        
+            $actionBtn .= '<li><a href="' . $purchasingUrl . '" class="btn-purchasing-inf">
+                    <i class="fas fa-shopping-cart"></i> ' . __("request.purchasing_inf_report") . '</a></li>';
     
             // if (auth()->user()->can("customer_request.update")) {
             //     $actionBtn .= '<li><a href="' . $editUrl . '" class="edit-request">
@@ -1430,10 +1434,94 @@ class RequestController extends Controller
             } else {
                 $item->status_invoice = 'Invoiced';
             }
+            
+            // Additional fields for Purchasing Request Information table
+            $item->received_qty = 0; // Placeholder until we have logic
+            $item->live_available = $item->available_qty;
+            $item->qty_to_generate_invoice = min($item->available_qty, $item->accepted_qty);
         }
 
-        // Return only HTML content without layout
-        return view('sell.request.request_inf_report', compact('request'))->render();
+        return view('sell.request.request_inf_report', compact('request'));
+    }
+
+    public function showInvoicingInfReport($id)
+    {
+        $request = $this->getRequestWithCalculatedItems($id);
+        return view('sell.request.inf_report_invoicing', compact('request'));
+    }
+
+    public function showPurchasingInfReport($id)
+    {
+        $request = $this->getRequestWithCalculatedItems($id);
+        return view('sell.request.inf_report_purchasing', compact('request'));
+    }
+
+    private function getRequestWithCalculatedItems($id)
+    {
+        $business_id = request()->session()->get('user.business_id');
+        $request = CustomerRequest::where('id', $id)
+            ->with([
+                'contact',
+                'items' => function ($query) use ($business_id) {
+                    $query->with([
+                        'product:id,name,sku',
+                        'variation:id,product_id,sub_sku',
+                        'variation.variation_location_details'
+                    ]);
+                }
+            ])
+            ->first();
+
+        if (!$request) {
+            abort(404);
+        }
+
+        foreach ($request->items as $item) {
+            $location_id = $request->business_location_id;
+            $variation_id = $item->variation_id;
+            
+            // Get stock details
+            $stock_details = $this->productUtil->getVariationStockDetails($business_id, $variation_id, $location_id);
+            
+            // Calculate fields
+            $item->stock_on_hand_hs = $stock_details['current_stock'];
+            $item->in_transit_qty_hs = $stock_details['total_purchase_transfer'];
+            
+            // Calculate available quantity
+            $item->available_qty = $item->stock_on_hand_hs + 
+                                $item->approved_ipr_qty_hs + 
+                                $item->in_transit_qty_hs - 
+                                $item->committed_qty_hs;
+            
+            // Calculate suggested quantity
+            $item->suggested_qty = max(0, $item->accepted_qty - $item->available_qty);
+            
+            // Calculate invoice-related fields
+            $item->pending_invoice = max(0, $item->accepted_qty - $item->invoiced_qty);
+            $item->available_for_invoice = min($item->accepted_qty, $item->available_qty);
+            $item->qty_to_generate_invoice = min($item->pending_invoice, $item->available_for_invoice);
+            
+            // Calculate committed for this order
+            $item->committed_for_order = $item->accepted_qty - $item->received_qty;
+            
+            // Set default statuses if not already set
+            if (empty($item->status_purchase)) {
+                $item->status_purchase = $item->available_qty >= $item->accepted_qty ? 
+                    'Not Necessary IPR' : 'Requested';
+            }
+            
+            if (empty($item->status_invoice)) {
+                if ($item->invoiced_qty <= 0) {
+                    $item->status_invoice = 'None Invoiced';
+                } elseif ($item->invoiced_qty < $item->accepted_qty) {
+                    $item->status_invoice = 'Partial Invoiced';
+                } else {
+                    $item->status_invoice = 'Invoiced';
+                }
+            }
+        }
+
+        return $request;
     }
 
     public function updateInfReport(Request $request)
@@ -1452,12 +1540,15 @@ class RequestController extends Controller
                     'cso_new_purchasing_req_no' => $item_data['cso_new_purchasing_req_no'],
                     'new_approved_qty_internal_req' => $item_data['new_approved_qty_internal_req'],
                     'status_purchase' => $item_data['status_purchase'],
-                    'internal_req_qty' => $item_data['internal_req_qty']
+                    'internal_req_qty' => $item_data['internal_req_qty'] ?? $requestItem->internal_req_qty
                 ]);
             }
         }
 
-        return redirect()->back()->with('success', __('messages.updated_success'));
+        return response()->json([
+            'success' => true,
+            'msg' => __('messages.updated_success')
+        ]);
     }
 
 }

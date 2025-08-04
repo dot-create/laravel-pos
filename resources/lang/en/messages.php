@@ -47,4 +47,8 @@ return [
     'reject' => 'Reject',
     'other' => 'Other',
     'select' => 'Select',
+    'confirm_delete' => 'Are you sure you want to delete this?',
+    'confirm_deactivate' => 'Are you sure you want to deactivate this?',
+    'confirm_activate' => 'Are you sure you want to activate this?',
+    'confirm_reject' => 'Are you sure you want to reject this?',
 ];

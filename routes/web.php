@@ -490,8 +490,23 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::post('product-racks/bulk-upload', 'ProductRackController@bulkUpload')->name('product-racks.bulk-upload');
     Route::get('/product-racks/storage-locations/{location_id}', 'ProductRackController@getStorageLocations')->name('product-racks.storage-locations');
     
-    Route::get('request/inf-report/{id}', 'RequestController@requestInfReport')->name('request.inf.report');
-    Route::post('request/update-inf-report', 'RequestController@updateInfReport')->name('request.update.inf.report');
+    // // Route::get('request/inf-report/{id}', 'RequestController@requestInfReport')->name('request.inf.report');
+    // Route::post('request/update-inf-report', 'RequestController@updateInfReport')->name('request.update.inf.report');
+
+    // INF Report routes
+    // Route::get('/request/{id}/inf-report', 'RequestController@requestInfReport')->name('request.inf.report');
+
+    // INF Report routes
+    Route::get('/request/invoicing-inf-report/{id}', 'RequestController@showInvoicingInfReport')
+    ->name('request.invoicing.inf.report');
+    
+    Route::get('/request/purchasing-inf-report/{id}', 'RequestController@showPurchasingInfReport')
+        ->name('request.purchasing.inf.report');
+        
+    Route::post('/request/update-inf-report', 'RequestController@updateInfReport')
+        ->name('request.update.inf.report');
+
+    Route::get('/expenses/get-tax-rate', 'ExpenseController@getTaxRateDetails')->name('expenses.get_tax_rate');
 });
 
 
