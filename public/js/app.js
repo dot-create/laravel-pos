@@ -1415,36 +1415,25 @@ $(document).ready(function() {
 
     // -------- Custom JavaScript for Expense Module --------   
     //Expense table
-    $('#expense_date_range').daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-            cancelLabel: 'Clear',
-            format: moment_date_format.toUpperCase()
-        }
-    });
-    
-    $('#expense_payment_date_range').daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-            cancelLabel: 'Clear',
-            format: moment_date_format.toUpperCase()
-        }
-    });
+    function initializeDateRangePicker(selector) {
+        $(selector).daterangepicker(
+            dateRangeSettings,
+            function (start, end) {
+                $(selector).val(start.format(moment_date_format) + ' ~ ' + end.format(moment_date_format));
+                expense_table.ajax.reload();
+            }
+        );
 
-    $('#expense_date_range').on('apply.daterangepicker', function(ev, picker) {
-        $(this).val(picker.startDate.format(moment_date_format.toUpperCase()) + ' ~ ' + picker.endDate.format(moment_date_format.toUpperCase()));
-        expense_table.ajax.reload();
-    });
+        $(selector).on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val('');
+            expense_table.ajax.reload();
+        });
+    }
 
-    $('#expense_payment_date_range').on('apply.daterangepicker', function(ev, picker) {
-        $(this).val(picker.startDate.format(moment_date_format.toUpperCase()) + ' ~ ' + picker.endDate.format(moment_date_format.toUpperCase()));
-        expense_table.ajax.reload();
-    });
+    // Initialize both date range pickers
+    initializeDateRangePicker('#expense_date_range');
+    initializeDateRangePicker('#expense_payment_date_range');
 
-    $('#expense_date_range, #expense_payment_date_range').on('cancel.daterangepicker', function(ev, picker) {
-        $(this).val('');
-        expense_table.ajax.reload();
-    });
 
     // Enhanced DataTable
     var expense_table = $('#expense_table').DataTable({

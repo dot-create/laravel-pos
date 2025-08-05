@@ -3037,31 +3037,94 @@ class TransactionUtil extends Util
     public function getInvoiceNumber($business_id, $status, $location_id, $invoice_scheme_id = null, $sale_type = null)
     {
         if ($status == 'final') {
+            // Get invoice scheme
             if (empty($invoice_scheme_id)) {
                 $scheme = $this->getInvoiceScheme($business_id, $location_id);
             } else {
                 $scheme = InvoiceScheme::where('business_id', $business_id)
                                         ->find($invoice_scheme_id);
             }
-            
+
+            // Ensure scheme exists
+            if (empty($scheme)) {
+                throw new \Exception("Invoice scheme not found.");
+            }
+
+            // Ensure scheme is active
+            if ($scheme->status !== 'active') {
+                throw new \Exception("The selected invoice scheme is inactive.");
+            }
+
+            // Ensure today is within valid date range
+            $today = date('Y-m-d');
+            if (!empty($scheme->start_date) && $today < $scheme->start_date) {
+                session()->flash('invoice_error', "Invoices cannot be generated before the scheme's start date: " . $scheme->start_date);
+                throw new \Exception("Invoices cannot be generated before the scheme's start date.");
+            }
+            if (!empty($scheme->expiration_date) && $today > $scheme->expiration_date) {
+                session()->flash('invoice_error', "Invoices cannot be generated after the scheme's expiration date: " . $scheme->expiration_date); 
+                throw new \Exception("Invoices cannot be generated after the scheme's expiration date.");
+            }
+
+            // Calculate next invoice number
+            $count = $scheme->start_number + $scheme->invoice_count;
+
+            // Ensure count does not exceed end_number
+            if (!empty($scheme->end_number) && $count > $scheme->end_number) {
+                session()->flash('invoice_error', 'Invoice limit reached for scheme ' . $scheme->name);
+                throw new \Exception("Invoice limit reached for this scheme.");  
+            }
+
+            // Build prefix
             if ($scheme->scheme_type == 'blank') {
                 $prefix = $scheme->prefix;
             } else {
                 $prefix = $scheme->prefix . date('Y') . config('constants.invoice_scheme_separator');
             }
 
-            //Count
-            $count = $scheme->start_number + $scheme->invoice_count;
-            $count = str_pad($count, $scheme->total_digits, '0', STR_PAD_LEFT);
+            // Format invoice number
+            $formatted_count = str_pad($count, $scheme->total_digits, '0', STR_PAD_LEFT);
+            $invoice_no = $prefix . $formatted_count;
 
-            //Prefix + count
-            $invoice_no = $prefix . $count;
-
-            //Increment the invoice count
-            $scheme->invoice_count = $scheme->invoice_count + 1;
+            // Save next invoice state
+            $scheme->invoice_count += 1;
+            $scheme->current_number = $count + 1;
             $scheme->save();
 
+            // Optional warning for nearing limits
+            $warning = null;
+            if (!empty($scheme->end_number)) {
+                $remaining_invoices = $scheme->end_number - $count;
+                if ($remaining_invoices <= 10) {
+                    $warning = "⚠️ Warning: Only {$remaining_invoices} invoice numbers remaining for scheme '{$scheme->name}'. Please update the scheme settings soon to avoid interruption.";
+                }
+            }
+            if (!empty($scheme->expiration_date)) {
+                $remaining_days = (strtotime($scheme->expiration_date) - strtotime($today)) / 86400;
+                if ($remaining_days <= 10) {
+                    $warning .= "⚠️ Only {$remaining_days} days remaining before invoice scheme '{$scheme->name}' expires. Business ID: {$business_id}, Scheme ID: {$scheme->id}";
+                }
+            }
+
+            // Log warning with additional context
+            if ($warning) {
+                \Log::warning($warning, [
+                    'business_id' => $business_id,
+                    'scheme_id' => $scheme->id,
+                    'scheme_name' => $scheme->name,
+                    'current_count' => $count,
+                    'remaining_invoices' => isset($remaining_invoices) ? $remaining_invoices : null,
+                    'expiration_date' => $scheme->expiration_date,
+                    'remaining_days' => isset($remaining_days) ? round($remaining_days) : null
+                ]);
+
+                session()->flash('invoice_warning', $warning);
+            }
+
+            // Log or return warning as needed (e.g., via session, log, or return array)
+            // Example: return ['invoice_no' => $invoice_no, 'warning' => $warning];
             return $invoice_no;
+
         } else if ($status == 'draft') {
             $ref_count = $this->setAndGetReferenceCount('draft', $business_id);
             $invoice_no = $this->generateReferenceNumber('draft', $ref_count, $business_id);
@@ -3070,11 +3133,11 @@ class TransactionUtil extends Util
             $ref_count = $this->setAndGetReferenceCount('sales_order', $business_id);
             $invoice_no = $this->generateReferenceNumber('sales_order', $ref_count, $business_id);
             return $invoice_no;
-        }
-        else {
+        } else {
             return Str::random(5);
         }
     }
+
 
     private function getInvoiceScheme($business_id, $location_id)
     {

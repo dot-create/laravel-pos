@@ -585,5 +585,10 @@
         }
         return parseFloat(value) || 0;
     }
+
+    $('.paid_on').datetimepicker({
+        format: moment_date_format + ' ' + moment_time_format,
+        ignoreReadonly: true
+    });
 </script>
 @endsection

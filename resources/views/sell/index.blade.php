@@ -3,6 +3,18 @@
 
 @section('content')
 
+@if(session('invoice_warning'))
+    <div class="alert alert-warning">
+        <i class="fa fa-exclamation-triangle"></i> {{ session('invoice_warning') }}
+    </div>
+@endif
+
+@if(session('invoice_error'))
+    <div class="alert alert-danger">
+        <i class="fa fa-exclamation-circle"></i> {{ session('invoice_error') }}
+    </div>
+@endif
+
 <!-- Content Header (Page header) -->
 <section class="content-header no-print">
     <h1>@lang( 'sale.sells')
