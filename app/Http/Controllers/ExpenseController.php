@@ -491,75 +491,71 @@ class ExpenseController extends Controller
         }
 
         try {
+            // Validate inputs
             $request->validate([
-                'document' => 'file|max:'. (config('constants.document_size_limit') / 1000),
-                'amount_before_tax' => 'required|numeric|min:0',
-                'tax_type' => 'required|in:percentage,fixed',
-                'final_total' => 'required|numeric|min:0'
+                'document' => 'nullable|file|max:' . (config('constants.document_size_limit') / 1000),
+                'final_total' => 'required|numeric|min:0',
+                'location_id' => 'required|exists:business_locations,id',
             ]);
-            
+
             $business_id = $request->session()->get('user.business_id');
-            
+
             if (!$this->moduleUtil->isSubscribed($business_id)) {
                 return $this->moduleUtil->expiredResponse(action('ExpenseController@index'));
             }
 
-            // Get current currency for proper calculations
-            $business_location = BusinessLocation::where('id', $request->location_id)->first();
-            $currency_details = Currency::where('id', $business_location->currency_id)->first();
-            
-            // Enhanced tax calculation
-            $this->calculateEnhancedTax($request);
-            
+            // Get currency and location details
+            $business_location = BusinessLocation::findOrFail($request->location_id);
+            $currency_details = Currency::findOrFail($business_location->currency_id);
             $request['exchange_rate'] = $currency_details->rate;
 
+            // Update expense via utility
             $expense = $this->transactionUtil->updateExpense($request, $id, $business_id);
-            
-            // Update additional tax information
+
+            // Apply optional tax data if sent
             $expense->update([
-                'amount_before_tax' => $request->amount_before_tax,
-                'tax_type' => $request->tax_type,
-                'tax_value' => $request->tax_value ?? 0,
-                'is_purchase' => $request->is_purchase ?? 0
+                'amount_before_tax' => $request->input('amount_before_tax', 0),
+                'tax_type' => $request->input('tax_type', 'percentage'),
+                'tax_value' => $request->input('tax_value', 0),
+                'is_purchase' => $request->input('is_purchase', 0)
             ]);
 
-            // Handle purchase expenses
-            if (isset($request->is_purchase) && $request->is_purchase == 1) {
-                ExpensePurchase::whereNotIn('purchase_id', $request->purchases)->where('expense_id', $id)->delete();
-                
-                foreach ($request->purchases as $key => $purchaseId) {
-                    $isExist = ExpensePurchase::where([
-                        "expense_id" => $id,
-                        "purchase_id" => $purchaseId
-                    ])->first();
-                    
-                    if ($isExist) {
-                        $isExist->update(["total" => $request->sub_total[$key]]);
-                    } else {
-                        ExpensePurchase::create([
-                            "expense_id" => $id,
-                            "purchase_id" => $purchaseId,
-                            "total" => $request->sub_total[$key],
-                        ]);
-                    }
+            // --- Handle related purchase entries ---
+            if ($request->has('is_purchase') && $request->is_purchase == 1) {
+                $submitted_purchase_ids = $request->input('purchases', []);
+                $submitted_sub_totals = $request->input('sub_total', []);
+
+                // Delete any existing mappings not included in this request
+                ExpensePurchase::where('expense_id', $id)
+                    ->whereNotIn('purchase_id', $submitted_purchase_ids)
+                    ->delete();
+
+                foreach ($submitted_purchase_ids as $index => $purchase_id) {
+                    $total = $submitted_sub_totals[$index] ?? 0;
+
+                    ExpensePurchase::updateOrCreate(
+                        ['expense_id' => $id, 'purchase_id' => $purchase_id],
+                        ['total' => $total]
+                    );
                 }
             } else {
+                // Clear any existing purchase mappings
                 $expense->update(['is_purchase' => 0]);
-                ExpensePurchase::where("expense_id", $expense->id)->delete();
+                ExpensePurchase::where('expense_id', $id)->delete();
             }
 
+            // Activity log
             $this->transactionUtil->activityLog($expense, 'edited');
 
             $output = ['success' => 1, 'msg' => __('expense.expense_update_success')];
-            
         } catch (\Exception $e) {
-            \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
-            // dd($e->getMessage());
+            \Log::error("Expense Update Error: File: " . $e->getFile() . " | Line: " . $e->getLine() . " | Message: " . $e->getMessage());
             $output = ['success' => 0, 'msg' => __('messages.something_went_wrong')];
         }
 
         return redirect('expenses')->with('status', $output);
     }
+
 
 
     /**
