@@ -81,7 +81,7 @@ class ExpenseController extends Controller
                                 'final_total',
                                 'transactions.amount_before_tax',
                                 'transactions.tax_type',
-                                'transactions.tax_value',
+                                'transactions.tax_value as expense_tax_value',
                                 'transactions.is_recurring',
                                 'transactions.recur_interval',
                                 'transactions.recur_interval_type',

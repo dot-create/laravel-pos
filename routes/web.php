@@ -507,6 +507,9 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
         ->name('request.update.inf.report');
 
     Route::get('/expenses/get-tax-rate', 'ExpenseController@getTaxRateDetails')->name('expenses.get_tax_rate');
+
+    Route::post('/request/update-invoicing-inf-report', 'RequestController@updateInvoicingInfReport')
+        ->name('request.update.invoicing.inf.report');
 });
 
 

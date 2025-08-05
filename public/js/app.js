@@ -1493,6 +1493,7 @@ $(document).ready(function() {
             {data: 'final_total', name: 'final_total'},
             {data: 'payment_due', name: 'payment_due'},
             {data: 'expense_for', name: 'expense_for'},
+            {data: 'expense_tax_value', name: 'expense_tax_value'},
             {data: 'contact_name', name: 'c.name'},
             {data: 'contact_company', name: 'contact_company'},
             {data: 'additional_notes', name: 'additional_notes'},

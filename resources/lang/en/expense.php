@@ -32,5 +32,6 @@ return [
     'expense_update_success' => 'Expense updated successfully',
     'expense_delete_success' => 'Expense deleted successfully',
     'expense_for' => 'Expense for',
+    'expense_tax_value' => 'Expense Tax Value',
 
 ];

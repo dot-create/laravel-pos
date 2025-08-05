@@ -1551,4 +1551,61 @@ class RequestController extends Controller
         ]);
     }
 
+    public function updateInvoicingInfReport(Request $request)
+    {
+        try {
+            $business_id = request()->session()->get('user.business_id');
+            $requestId = $request->input('request_id');
+            
+            $salesRequest = CustomerRequest::where('business_id', $business_id)
+                ->findOrFail($requestId);
+            
+            $items = $request->input('items');
+            $updatedItems = [];
+
+            foreach ($items as $itemId => $itemData) {
+                $item = RequestItem::where('request_id', $requestId)
+                    ->findOrFail($itemId);
+                
+                $qtyToGenerate = (float)$itemData['qty_to_generate'];
+                $acceptedQty = (float)$item->accepted_qty;
+                
+                // Validate quantity doesn't exceed accepted quantity
+                if ($qtyToGenerate > $acceptedQty) {
+                    return response()->json([
+                        'success' => false,
+                        'msg' => __('request.qty_exceeds_accepted', ['sku' => $item->product->sku])
+                    ], 400);
+                }
+                
+                // Update invoiced quantity
+                $item->invoiced_qty = $qtyToGenerate;
+                
+                // Calculate status based on new invoiced quantity
+                if ($qtyToGenerate == 0) {
+                    $item->status_invoice = 'Not Started';
+                } elseif ($qtyToGenerate < $acceptedQty) {
+                    $item->status_invoice = 'Partial Invoiced';
+                } else {
+                    $item->status_invoice = 'Invoiced';
+                }
+                
+                $item->save();
+                $updatedItems[] = $item;
+            }
+
+            return response()->json([
+                'success' => true,
+                'msg' => __('request.invoicing_report_updated'),
+                'items' => $updatedItems
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'msg' => $e->getMessage()
+            ], 400);
+        }
+    }
+
 }

@@ -114,6 +114,7 @@
                                 <th>@lang('sale.total_amount')</th>
                                 <th>@lang('purchase.payment_due')</th>
                                 <th>@lang('expense.expense_for')</th>
+                                <th>@lang('expense.expense_tax_value')</th>
                                 <th>@lang('contact.contact')</th>
                                 <th>@lang('Contact Company')</th>
                                 <th>@lang('expense.expense_note')</th>

@@ -11,23 +11,92 @@
             @csrf
             <input type="hidden" name="request_id" value="{{ $request->id }}">
             <div class="modal-body">
+                <!-- Regulation Number Table -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>@lang('request.regulation_number')</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>@lang('request.requisition_number')</th>
+                                    <th>@lang('contact.customer')</th>
+                                    <th>@lang('product.sku')</th>
+                                    <th>@lang('product.description')</th>
+                                    <th>@lang('request.accepted_qty')</th>
+                                    <th>@lang('request.customer_po_number')</th>
+                                    <th>@lang('request.c_po_date')</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($request->items as $item)
+                                <tr>
+                                    <td>{{ $request->request_reference }}</td>
+                                    <td>{{ $request->contact->name }}</td>
+                                    <td>{{ $item->product->sku ?? $item->variation->sub_sku }}</td>
+                                    <td>{{ $item->product->name }} {{ $item->variation->name }}</td>
+                                    <td>{{ $item->accepted_qty }}</td>
+                                    <td>{{ $item->po_number }}</td>
+                                    <td>{{ $request->created_at->format('Y-m-d') }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Internal Req Qty Table -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>@lang('request.internal_req_qty')</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>@lang('request.available_qty')</th>
+                                    <th>@lang('request.stock_on_hand_hs')</th>
+                                    <th>@lang('request.approved_ipr_qty_hs')</th>
+                                    <th>@lang('request.in_transit_qty_hs')</th>
+                                    <th>@lang('request.committed_qty_hs')</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($request->items as $item)
+                                <tr>
+                                    <td>{{ $item->available_qty }}</td>
+                                    <td>{{ $item->stock_on_hand_hs }}</td>
+                                    <td>{{ $item->approved_ipr_qty_hs }}</td>
+                                    <td>{{ $item->in_transit_qty_hs }}</td>
+                                    <td>{{ $item->committed_qty_hs }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Information Section -->
+                <div class="alert alert-info">
+                    <p>@lang('request.internal_req_qty_note')</p>
+                </div>
+
+                <!-- Checkbox Section -->
+                <div class="form-group">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="convert-items">
+                        <label class="form-check-label" for="convert-items">
+                            @lang('request.convert_items_label')
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Main Items Table -->
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
-                                <th>@lang('request.requisition_number')</th>
-                                <th>@lang('contact.customer')</th>
-                                <th>@lang('product.sku')</th>
-                                <th>@lang('product.description')</th>
-                                <th>@lang('request.accepted_qty')</th>
-                                <th>@lang('request.customer_po_number')</th>
-                                <th>@lang('request.c_po_date')</th>
-                                <th>@lang('request.ipr_qty')</th>
-                                <th>@lang('request.stock_on_hand_hs')</th>
-                                <th>@lang('request.approved_ipr_qty_hs')</th>
-                                <th>@lang('request.in_transit_qty_hs')</th>
-                                <th>@lang('request.committed_qty_hs')</th>
-                                <th>@lang('request.available_qty')</th>
                                 <th>@lang('request.suggested_qty_to_request')</th>
                                 <th>@lang('request.cso_new_purchasing_req')</th>
                                 <th>@lang('request.internal_req_qty')</th>
@@ -38,77 +107,67 @@
                         </thead>
                         <tbody>
                             @foreach($request->items as $item)
-                                <tr>
-                                    <td>{{ $request->request_reference }}</td>
-                                    <td>{{ $request->contact->name }}</td>
-                                    <td>{{ $item->product->sku ?? $item->variation->sub_sku }}</td>
-                                    <td>{{ $item->product->name }} {{ $item->variation->name }}</td>
-                                    <td>{{ $item->accepted_qty }}</td>
-                                    <td>{{ $item->po_number }}</td>
-                                    <td>{{ $request->created_at->format('Y-m-d') }}</td>
-                                    <td>
-                                        <input type="number" 
-                                            name="items[{{ $item->id }}][internal_req_qty]" 
-                                            value="{{ $item->internal_req_qty }}" 
-                                            class="form-control input-sm">
-                                    </td>
-                                    <td>{{ $item->stock_on_hand_hs }}</td>
-                                    <td>{{ $item->approved_ipr_qty_hs }}</td>
-                                    <td>{{ $item->in_transit_qty_hs }}</td>
-                                    <td>{{ $item->committed_qty_hs }}</td>
-                                    <td>{{ $item->available_qty }}</td>
-                                    <td>{{ $item->suggested_qty }}</td>
-                                    <td>
-                                        <input type="text" 
-                                            name="items[{{ $item->id }}][cso_new_purchasing_req_no]" 
-                                            value="{{ $item->cso_new_purchasing_req_no }}" 
-                                            class="form-control input-sm">
-                                    </td>
-                                    <td>
-                                        <input type="number" 
-                                            name="items[{{ $item->id }}][new_approved_qty_internal_req]" 
-                                            value="{{ $item->new_approved_qty_internal_req }}" 
-                                            class="form-control input-sm">
-                                    </td>
-                                    <td>
-                                        <input type="number" 
-                                            name="items[{{ $item->id }}][received_qty]" 
-                                            value="{{ $item->received_qty }}" 
-                                            class="form-control input-sm">
-                                    </td>
-                                    <td>
-                                        <select name="items[{{ $item->id }}][status_purchase]" 
-                                                class="form-control input-sm status-purchase-select">
-                                            <option value="Not Started" {{ $item->status_purchase == 'Not Started' ? 'selected' : '' }}>
-                                                @lang('request.not_started')
-                                            </option>
-                                            <option value="Requested" {{ $item->status_purchase == 'Requested' ? 'selected' : '' }}>
-                                                @lang('request.requested')
-                                            </option>
-                                            <option value="Pending Approval" {{ $item->status_purchase == 'Pending Approval' ? 'selected' : '' }}>
-                                                @lang('request.pending_approval')
-                                            </option>
-                                            <option value="Approved" {{ $item->status_purchase == 'Approved' ? 'selected' : '' }}>
-                                                @lang('request.req_approved')
-                                            </option>
-                                            <option value="Ordered" {{ $item->status_purchase == 'Ordered' ? 'selected' : '' }}>
-                                                @lang('request.ordered')
-                                            </option>
-                                            <option value="Received" {{ $item->status_purchase == 'Received' ? 'selected' : '' }}>
-                                                @lang('request.received')
-                                            </option>
-                                        </select>
-                                    </td>
-                                    <td>{{ $item->committed_for_order }}</td>
-                                </tr>
+                            <tr>
+                                <td>{{ $item->suggested_qty }}</td>
+                                <td>
+                                    <input type="text" 
+                                        name="items[{{ $item->id }}][cso_new_purchasing_req_no]" 
+                                        value="{{ $item->cso_new_purchasing_req_no }}" 
+                                        class="form-control input-sm">
+                                </td>
+                                <td>
+                                    <input type="number" 
+                                        name="items[{{ $item->id }}][internal_req_qty]" 
+                                        value="{{ $item->suggested_qty }}" 
+                                        class="form-control input-sm" 
+                                        readonly>
+                                </td>
+                                <td>
+                                    <input type="number" 
+                                        name="items[{{ $item->id }}][received_qty]" 
+                                        value="{{ $item->received_qty }}" 
+                                        class="form-control input-sm">
+                                </td>
+                                <td>
+                                    <select name="items[{{ $item->id }}][status_purchase]" 
+                                            class="form-control input-sm status-purchase-select">
+                                        <option value="Not Started" {{ $item->status_purchase == 'Not Started' ? 'selected' : '' }}>
+                                            @lang('request.not_started')
+                                        </option>
+                                        <option value="Requested" {{ $item->status_purchase == 'Requested' ? 'selected' : '' }}>
+                                            @lang('request.requested')
+                                        </option>
+                                        <option value="Pending Approval" {{ $item->status_purchase == 'Pending Approval' ? 'selected' : '' }}>
+                                            @lang('request.pending_approval')
+                                        </option>
+                                        <option value="Approved" {{ $item->status_purchase == 'Approved' ? 'selected' : '' }}>
+                                            @lang('request.req_approved')
+                                        </option>
+                                        <option value="Ordered" {{ $item->status_purchase == 'Ordered' ? 'selected' : '' }}>
+                                            @lang('request.ordered')
+                                        </option>
+                                        <option value="Received" {{ $item->status_purchase == 'Received' ? 'selected' : '' }}>
+                                            @lang('request.received')
+                                        </option>
+                                    </select>
+                                </td>
+                                <td>{{ $item->committed_for_order }}</td>
+                            </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">@lang('messages.save')</button>
-                <button type="button" class="btn btn-default" data-dismiss="modal">@lang('messages.close')</button>
+                <button type="button" class="btn btn-info" id="chart-ipr">
+                    @lang('request.chart_ipr')
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    @lang('messages.save')
+                </button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">
+                    @lang('messages.close')
+                </button>
             </div>
         </form>
     </div>
@@ -133,7 +192,6 @@ $(document).ready(function() {
         // Hide fields based on status
         if (status === 'Not Necessary IPR' || status === 'Not Started') {
             row.find('input[name*="cso_new_purchasing_req_no"]').closest('td').hide();
-            row.find('input[name*="new_approved_qty_internal_req"]').closest('td').hide();
             row.find('input[name*="internal_req_qty"]').closest('td').hide();
         }
     }
@@ -156,9 +214,15 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                toastr.error(__('messages.something_went_wrong'));
+                toastr.error('@lang('messages.something_went_wrong')');
             }
         });
+    });
+    
+    // Chart IPR button handler
+    $('#chart-ipr').on('click', function() {
+        // Implement Chart IPR functionality here
+        toastr.info('@lang('request.chart_ipr_functionality')');
     });
 });
 </script>
