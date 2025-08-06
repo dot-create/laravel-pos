@@ -510,6 +510,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
 
     Route::post('/request/update-invoicing-inf-report', 'RequestController@updateInvoicingInfReport')
         ->name('request.update.invoicing.inf.report');
+
+    Route::get('/quotes/move-to-dispute/{id}', 'RequestController@moveToDispute')->name('quotes.moveToDispute');
 });
 
 

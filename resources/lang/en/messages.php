@@ -51,4 +51,5 @@ return [
     'confirm_deactivate' => 'Are you sure you want to deactivate this?',
     'confirm_activate' => 'Are you sure you want to activate this?',
     'confirm_reject' => 'Are you sure you want to reject this?',
+    'move_to_dispute' => 'Move to Dispute',
 ];

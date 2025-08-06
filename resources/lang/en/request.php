@@ -216,9 +216,12 @@ return [
     'show_history_columns' => 'Show History Columns',
 
     'regulation_number' => 'Regulation Number',
-'internal_req_qty' => 'Internal reg_Qty',
-'internal_req_qty_note' => 'Suggested Quantity is automatically calculated when accept the quote Qty. After save as "Internal reg_Qty" NOT allow to edit',
-'convert_items_label' => 'Add a Check box for items to convert',
-'chart_ipr' => 'Chart IPR',
-'chart_ipr_functionality' => 'Chart IPR functionality will be implemented here',
+    'internal_req_qty' => 'Internal reg_Qty',
+    'internal_req_qty_note' => 'Suggested Quantity is automatically calculated when accept the quote Qty. After save as "Internal reg_Qty" NOT allow to edit',
+    'convert_items_label' => 'Add a Check box for items to convert',
+    'chart_ipr' => 'Chart IPR',
+    'chart_ipr_functionality' => 'Chart IPR functionality will be implemented here',
+
+    'quotation_number' => 'Quotation Number',
+
 ];

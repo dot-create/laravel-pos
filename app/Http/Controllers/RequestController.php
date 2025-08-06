@@ -234,9 +234,10 @@ class RequestController extends Controller
         
                 $actionBtn .= '</ul></div>';
         
-                $request->action = $actionBtn;
+                return $actionBtn;
+                // $request->action = $actionBtn;
         
-                return $request;
+                // return $request;
             });
             $requestArray = [];
     
@@ -729,6 +730,8 @@ class RequestController extends Controller
             $acceptUrl = route('request.quote.accept', [$request->id]);
             $rejectUrl = route('request.quote.reject', [$request->id]);
             $printUrl=route('request.quote.print', [$request->id]);
+            $disputeUrl = route('quotes.moveToDispute', [$request->id]);
+
     
             $actionBtn = '<div class="btn-group">
                             <button type="button" class="btn btn-info dropdown-toggle btn-xs" 
@@ -736,7 +739,7 @@ class RequestController extends Controller
                                 ' . __("messages.actions") . '
                                 <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-left" role="menu">';
+                            <ul class="dropdown-menu dropdown-menu-right" role="menu">';
     
             // if (auth()->user()->can("customer_request.update")) {
                 $actionBtn .= '<li><a href="' . $editUrl . '" class="edit-request">
@@ -748,9 +751,12 @@ class RequestController extends Controller
                                 <i class="fas fa-check"></i> ' . __("request.accept") . '</a></li>';
                 $actionBtn .= '<li><a href="' . $rejectUrl . '" class="delete-request">
                                 <i class="fas fa-times"></i> ' . __("messages.reject") . '</a></li>';
-                $actionBtn.='<li><a href="' .$printUrl . '" target="_blank"><i class="fas fa-print" aria-hidden="true"></i> ' . __("lang_v1.download_pdf") . '</a></li>';
+                $actionBtn.='<li><a href="' .$printUrl . '" target="_blank" id="print-' . $request->id . '"><i class="fas fa-print" aria-hidden="true"></i> ' . __("lang_v1.download_pdf") . '</a></li>';
             // }
             
+            $actionBtn .= '<li><a href="' . $disputeUrl . '" class="move-to-dispute" id="move-to-dispute-' . $request->id . '">
+                                <i class="fas fa-exclamation-triangle"></i> ' . __("messages.move_to_dispute") . '</a></li>';
+
             $actionBtn .= '</ul></div>';
     
             $request->action = $actionBtn;
@@ -779,6 +785,9 @@ class RequestController extends Controller
                 ->addIndexColumn() // Adds Sr#
                 ->addColumn('date', fn($row) => $row->created_at ?? 'N/A')
                 ->addColumn('contact', fn($row) => $row->contact->supplier_business_name ?? $row->contact->name)
+                ->addColumn('quotation_number', function($row) {
+                    return 'Q-' . str_pad($row->id, 6, '0', STR_PAD_LEFT);
+                })
                 ->addColumn('ref_no', fn($row) => $row->request_reference)
                 ->addColumn('availability_status', fn($row) => '<span class="label bg-green">'.$row->status.'</span>')
                 ->addColumn('action', fn($row) => $row->action)
@@ -1608,4 +1617,14 @@ class RequestController extends Controller
         }
     }
 
+    public function moveToDispute($id)
+    {
+        $quote = CustomerRequest::find($id);
+        if ($quote) {
+            $quote->status = 'DisputeQuote';
+            $quote->save();
+            return redirect()->back()->with('success', 'Quote moved to dispute successfully.');
+        }
+        return redirect()->back()->with('error', 'Quote not found.');
+    }
 }

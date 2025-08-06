@@ -45,6 +45,16 @@ class Kernel extends ConsoleKernel
                     //->everyThirtyMinutes()
                     ->emailOutputTo($email);
         }
+
+        $schedule->command('quotes:check-expiration')
+            ->daily()
+            ->before(function () {
+                \Log::info('Starting quote expiration check at: ' . now());
+            })
+            ->after(function () {
+                \Log::info('Finished quote expiration check at: ' . now());
+            })
+            ->appendOutputTo(storage_path('logs/quote_check.log'));
     }
 
     /**

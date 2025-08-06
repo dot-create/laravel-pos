@@ -860,6 +860,7 @@ $(document).ready(function() {
             
             { data: 'date', name: 'date' },
             { data: 'contact', name: 'contact' },
+            { data: 'quotation_number', name: 'quotation_number' },
             { data: 'ref_no', name: 'ref_no' ,searchable: true},
             { data: 'availability_status', name: 'status' },
             { data: 'action', name: 'action' },
@@ -938,7 +939,7 @@ $(document).ready(function() {
             quote_reject_table.ajax.reload();
         }
     );
-    quote_despute_table = $('#quote_despute_table').DataTable({
+    quote_dispute_table = $('#quote_dispute_table').DataTable({
         processing: true,
         serverSide: true,
         scrollY: "75vh",
@@ -987,11 +988,11 @@ $(document).ready(function() {
     });
     $(document).on(
         'change',
-        '#quote_despute_table,\
+        '#quote_dispute_table,\
         #request_list_filter_status,\
         #request_list_filter_sku_model',
         function() {
-            quote_despute_table.ajax.reload();
+            quote_dispute_table.ajax.reload();
         }
     );
     // quote_accept_table = $('#quote_accept_table').DataTable({
