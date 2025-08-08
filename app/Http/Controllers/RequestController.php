@@ -911,6 +911,7 @@ class RequestController extends Controller
             $printUrl=route('request.quote.print', [$request->id]);
             $invoicingUrl = route('request.invoicing.inf.report', [$request->id]);
             $purchasingUrl = route('request.purchasing.inf.report', [$request->id]);
+            $invoicingUrlFull = route('request.invoicing.inf.report.full', ['id' => $request->id]);
             // $printUrl='#';
     
             $actionBtn = '<div class="btn-group">
@@ -923,7 +924,10 @@ class RequestController extends Controller
 
             $actionBtn .= '<li><a href="' . $invoicingUrl . '" class="btn-invoicing-inf">
                 <i class="fas fa-file-invoice"></i> ' . __("request.invoicing_inf_report") . '</a></li>';
-        
+
+            // $actionBtn .= '<li><a href="' . $invoicingUrlFull . '" class="btn-invoicing-inf-full">
+            //                 <i class="fas fa-file-invoice"></i> ' . __("request.invoicing_inf_report_full") . '</a></li>';
+
             $actionBtn .= '<li><a href="' . $purchasingUrl . '" class="btn-purchasing-inf">
                     <i class="fas fa-shopping-cart"></i> ' . __("request.purchasing_inf_report") . '</a></li>';
     
@@ -1546,8 +1550,8 @@ class RequestController extends Controller
 
             if ($requestItem) {
                 $requestItem->update([
-                    'cso_new_purchasing_req_no' => $item_data['cso_new_purchasing_req_no'],
-                    'new_approved_qty_internal_req' => $item_data['new_approved_qty_internal_req'],
+                    'cso_new_purchasing_req_no' => isset($item_data['cso_new_purchasing_req_no']) ? $item_data['cso_new_purchasing_req_no'] : $requestItem->cso_new_purchasing_req_no,
+                    'new_approved_qty_internal_req' => isset($item_data['new_approved_qty_internal_req']) ? $item_data['new_approved_qty_internal_req'] : $requestItem->new_approved_qty_internal_req,
                     'status_purchase' => $item_data['status_purchase'],
                     'internal_req_qty' => $item_data['internal_req_qty'] ?? $requestItem->internal_req_qty
                 ]);
@@ -1560,6 +1564,63 @@ class RequestController extends Controller
         ]);
     }
 
+    public function moveToDispute($id)
+    {
+        $quote = CustomerRequest::find($id);
+        if ($quote) {
+            $quote->status = 'DisputeQuote';
+            $quote->save();
+            return redirect()->back()->with('success', 'Quote moved to dispute successfully.');
+        }
+        return redirect()->back()->with('error', 'Quote not found.');
+    }
+
+
+    // Add this method to RequestController
+    public function showInvoicingInfReportFull($id)
+    {
+        $business_id = request()->session()->get('user.business_id');
+        $request = CustomerRequest::where('id', $id)
+            ->with([
+                'contact',
+                'items' => function ($query) use ($business_id) {
+                    $query->with([
+                        'product:id,name,sku',
+                        'variation:id,product_id,sub_sku',
+                        'variation.variation_location_details'
+                    ]);
+                }
+            ])
+            ->first();
+
+        if (!$request) {
+            abort(404);
+        }
+
+        // Calculate dynamic values for each item
+        foreach ($request->items as $item) {
+            $location_id = $request->business_location_id;
+            $variation_id = $item->variation_id;
+            
+            // Get stock details
+            $stock_details = $this->productUtil->getVariationStockDetails($business_id, $variation_id, $location_id);
+            
+            // Calculate fields
+            $item->stock_on_hand_hs = $stock_details['current_stock'];
+            $item->in_transit_qty_hs = $stock_details['total_purchase_transfer'];
+            $item->available_qty = $item->stock_on_hand_hs + 
+                                $item->approved_ipr_qty_hs + 
+                                $item->in_transit_qty_hs - 
+                                $item->committed_qty_hs;
+            
+            $item->available_for_invoice = min($item->accepted_qty, $item->available_qty);
+            $item->pending_invoice = max(0, $item->accepted_qty - $item->invoiced_qty);
+        }
+
+        return view('sell.request.inf_report_invoicing_full', compact('request'));
+    }
+
+    // Update the AJAX handler method
     public function updateInvoicingInfReport(Request $request)
     {
         try {
@@ -1578,13 +1639,28 @@ class RequestController extends Controller
                 
                 $qtyToGenerate = (float)$itemData['qty_to_generate'];
                 $acceptedQty = (float)$item->accepted_qty;
+                $availableQty = (float)$itemData['available_qty'];
+                
+                // Validate quantity doesn't exceed available quantity
+                if ($qtyToGenerate > $availableQty) {
+                    return response()->json([
+                        'success' => false,
+                        'msg' => __('request.qty_exceeds_available', [
+                            'sku' => $item->product->sku,
+                            'available' => $availableQty
+                        ])
+                    ], 422);
+                }
                 
                 // Validate quantity doesn't exceed accepted quantity
                 if ($qtyToGenerate > $acceptedQty) {
                     return response()->json([
                         'success' => false,
-                        'msg' => __('request.qty_exceeds_accepted', ['sku' => $item->product->sku])
-                    ], 400);
+                        'msg' => __('request.qty_exceeds_accepted', [
+                            'sku' => $item->product->sku,
+                            'accepted' => $acceptedQty
+                        ])
+                    ], 422);
                 }
                 
                 // Update invoiced quantity
@@ -1610,21 +1686,51 @@ class RequestController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            \Log::error("Error updating invoicing report: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'msg' => $e->getMessage()
-            ], 400);
+                'msg' => __('messages.something_went_wrong')
+            ], 500);
         }
     }
 
-    public function moveToDispute($id)
+    // Add this method to save draft quantities
+    public function saveDraft(Request $request)
     {
-        $quote = CustomerRequest::find($id);
-        if ($quote) {
-            $quote->status = 'DisputeQuote';
-            $quote->save();
-            return redirect()->back()->with('success', 'Quote moved to dispute successfully.');
+        $business_id = request()->session()->get('user.business_id');
+        $items = $request->input('items');
+        
+        try {
+            DB::beginTransaction();
+            
+            foreach ($items as $itemData) {
+                $item = RequestItem::whereHas('request', function ($q) use ($business_id) {
+                        $q->where('business_id', $business_id);
+                    })
+                    ->find($itemData['id']);
+                    
+                if ($item) {
+                    $item->internal_req_qty = $itemData['internal_req_qty'];
+                    $item->draft_saved = true;
+                    $item->save();
+                }
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'msg' => __('request.draft_saved_success')
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("Error saving draft: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'msg' => __('messages.something_went_wrong')
+            ], 500);
         }
-        return redirect()->back()->with('error', 'Quote not found.');
     }
+
 }

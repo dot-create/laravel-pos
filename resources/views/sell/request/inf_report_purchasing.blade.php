@@ -11,10 +11,10 @@
             @csrf
             <input type="hidden" name="request_id" value="{{ $request->id }}">
             <div class="modal-body">
-                <!-- Regulation Number Table -->
+                <!-- Header Information Table -->
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5>@lang('request.regulation_number')</h5>
+                        <h5>@lang('request.header_information')</h5>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered">
@@ -22,54 +22,53 @@
                                 <tr>
                                     <th>@lang('request.requisition_number')</th>
                                     <th>@lang('contact.customer')</th>
-                                    <th>@lang('product.sku')</th>
-                                    <th>@lang('product.description')</th>
-                                    <th>@lang('request.accepted_qty')</th>
                                     <th>@lang('request.customer_po_number')</th>
                                     <th>@lang('request.c_po_date')</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($request->items as $item)
                                 <tr>
                                     <td>{{ $request->request_reference }}</td>
                                     <td>{{ $request->contact->name }}</td>
-                                    <td>{{ $item->product->sku ?? $item->variation->sub_sku }}</td>
-                                    <td>{{ $item->product->name }} {{ $item->variation->name }}</td>
-                                    <td>{{ $item->accepted_qty }}</td>
-                                    <td>{{ $item->po_number }}</td>
+                                    <td>{{ $request->items[0]->po_number ?? 'N/A' }}</td>
                                     <td>{{ $request->created_at->format('Y-m-d') }}</td>
                                 </tr>
-                                @endforeach
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Internal Req Qty Table -->
+                <!-- Stock History Section -->
                 <div class="card mb-4">
-                    <div class="card-header">
-                        <h5>@lang('request.internal_req_qty')</h5>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>@lang('request.stock_history')</h5>
+                        <button type="button" class="btn btn-sm btn-info" id="toggle-history-columns">
+                            @lang('request.show_hide_history')
+                        </button>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>@lang('request.available_qty')</th>
-                                    <th>@lang('request.stock_on_hand_hs')</th>
-                                    <th>@lang('request.approved_ipr_qty_hs')</th>
-                                    <th>@lang('request.in_transit_qty_hs')</th>
-                                    <th>@lang('request.committed_qty_hs')</th>
+                                    <th>@lang('product.sku')</th>
+                                    <th>@lang('product.description')</th>
+                                    <th class="history-column">@lang('request.available_qty')</th>
+                                    <th class="history-column">@lang('request.stock_on_hand_hs')</th>
+                                    <th class="history-column">@lang('request.approved_ipr_qty_hs')</th>
+                                    <th class="history-column">@lang('request.in_transit_qty_hs')</th>
+                                    <th class="history-column">@lang('request.committed_qty_hs')</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($request->items as $item)
                                 <tr>
-                                    <td>{{ $item->available_qty }}</td>
-                                    <td>{{ $item->stock_on_hand_hs }}</td>
-                                    <td>{{ $item->approved_ipr_qty_hs }}</td>
-                                    <td>{{ $item->in_transit_qty_hs }}</td>
-                                    <td>{{ $item->committed_qty_hs }}</td>
+                                    <td>{{ $item->product->sku ?? $item->variation->sub_sku }}</td>
+                                    <td>{{ $item->product->name }} {{ $item->variation->name }}</td>
+                                    <td class="history-column">{{ $item->available_qty }}</td>
+                                    <td class="history-column">{{ $item->stock_on_hand_hs }}</td>
+                                    <td class="history-column">{{ $item->approved_ipr_qty_hs }}</td>
+                                    <td class="history-column">{{ $item->in_transit_qty_hs }}</td>
+                                    <td class="history-column">{{ $item->committed_qty_hs }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -82,45 +81,58 @@
                     <p>@lang('request.internal_req_qty_note')</p>
                 </div>
 
-                <!-- Checkbox Section -->
-                <div class="form-group">
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="convert-items">
-                        <label class="form-check-label" for="convert-items">
-                            @lang('request.convert_items_label')
-                        </label>
-                    </div>
-                </div>
-
                 <!-- Main Items Table -->
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
+                                <th width="3%">@lang('request.select')</th>
                                 <th>@lang('request.suggested_qty_to_request')</th>
-                                <th>@lang('request.cso_new_purchasing_req')</th>
                                 <th>@lang('request.internal_req_qty')</th>
+                                <th>@lang('request.cso_new_purchasing_req')</th>
                                 <th>@lang('request.received_for_order')</th>
-                                <th>@lang('request.status')</th>
+                                <th>
+                                    @lang('request.status')
+                                    <select class="form-control input-sm status-header-select">
+                                        <option value="">@lang('messages.all')</option>
+                                        <option value="Not Started">@lang('request.not_started')</option>
+                                        <option value="Requested">@lang('request.requested')</option>
+                                        <option value="Pending Approval">@lang('request.pending_approval')</option>
+                                        <option value="Approved">@lang('request.req_approved')</option>
+                                        <option value="Ordered">@lang('request.ordered')</option>
+                                        <option value="Received">@lang('request.received')</option>
+                                    </select>
+                                </th>
                                 <th>@lang('request.committed_for_order')</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($request->items as $item)
                             <tr>
-                                <td>{{ $item->suggested_qty }}</td>
                                 <td>
-                                    <input type="text" 
-                                        name="items[{{ $item->id }}][cso_new_purchasing_req_no]" 
-                                        value="{{ $item->cso_new_purchasing_req_no }}" 
-                                        class="form-control input-sm">
+                                    <input type="checkbox" name="items[{{ $item->id }}][select]" 
+                                        class="form-check-input item-select"
+                                        data-item-id="{{ $item->id }}">
+                                </td>
+                                <td>
+                                    <input type="number" 
+                                        name="items[{{ $item->id }}][suggested_qty]" 
+                                        value="{{ $item->suggested_qty }}" 
+                                        class="form-control input-sm" readonly>
                                 </td>
                                 <td>
                                     <input type="number" 
                                         name="items[{{ $item->id }}][internal_req_qty]" 
                                         value="{{ $item->suggested_qty }}" 
-                                        class="form-control input-sm" 
-                                        readonly>
+                                        class="form-control input-sm internal-req-qty"
+                                        @if($item->draft_saved) readonly @endif
+                                        data-item-id="{{ $item->id }}">
+                                </td>
+                                <td>
+                                    <input type="text" 
+                                        name="items[{{ $item->id }}][cso_new_purchasing_req_no]" 
+                                        value="{{ $item->cso_new_purchasing_req_no }}" 
+                                        class="form-control input-sm">
                                 </td>
                                 <td>
                                     <input type="number" 
@@ -159,8 +171,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-info" id="chart-ipr">
-                    @lang('request.chart_ipr')
+                <button type="button" class="btn btn-info" id="draft-ipr">
+                    @lang('request.draft_ipr')
                 </button>
                 <button type="submit" class="btn btn-primary">
                     @lang('messages.save')
@@ -175,7 +187,25 @@
 
 <script>
 $(document).ready(function() {
-    // Handle status changes to show/hide fields
+    // Toggle history columns
+    $('#toggle-history-columns').on('click', function() {
+        $('.history-column').toggle();
+    });
+
+    // Filter by status
+    $('.status-header-select').change(function() {
+        const status = $(this).val();
+        $('.status-purchase-select').each(function() {
+            const row = $(this).closest('tr');
+            if (status === "" || $(this).val() === status) {
+                row.show();
+            } else {
+                row.hide();
+            }
+        });
+    });
+
+    // Handle status changes
     $('.status-purchase-select').each(function() {
         toggleStatusFields($(this));
     }).change(function() {
@@ -195,6 +225,60 @@ $(document).ready(function() {
             row.find('input[name*="internal_req_qty"]').closest('td').hide();
         }
     }
+    
+    // Handle Draft IPR button
+    $('#draft-ipr').on('click', function() {
+        const selectedItems = [];
+        let hasSelected = false;
+        
+        $('.item-select:checked').each(function() {
+            hasSelected = true;
+            const itemId = $(this).data('item-id');
+            const qtyInput = $(`input.internal-req-qty[data-item-id="${itemId}"]`);
+            const qtyValue = qtyInput.val();
+            
+            // Validate quantity
+            if (!qtyValue || qtyValue <= 0) {
+                toastr.error("@lang('request.invalid_quantity')");
+                return false;
+            }
+            
+            selectedItems.push({
+                id: itemId,
+                internal_req_qty: qtyValue
+            });
+            
+            // Make input readonly immediately
+            qtyInput.attr('readonly', true);
+        });
+        
+        if (!hasSelected) {
+            toastr.error("@lang('request.no_items_selected')");
+            return;
+        }
+        
+        // Send AJAX request
+        $.ajax({
+            url: "{{ route('request.save.draft') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                items: selectedItems
+            },
+            success: function(response) {
+                if (response.success) {
+                    toastr.success(response.msg);
+                    // Uncheck all checkboxes
+                    $('.item-select:checked').prop('checked', false);
+                } else {
+                    toastr.error(response.msg);
+                }
+            },
+            error: function(xhr) {
+                toastr.error('@lang('messages.something_went_wrong')');
+            }
+        });
+    });
     
     // Handle form submission
     $('#inf-report-form').on('submit', function(e) {
@@ -217,12 +301,6 @@ $(document).ready(function() {
                 toastr.error('@lang('messages.something_went_wrong')');
             }
         });
-    });
-    
-    // Chart IPR button handler
-    $('#chart-ipr').on('click', function() {
-        // Implement Chart IPR functionality here
-        toastr.info('@lang('request.chart_ipr_functionality')');
     });
 });
 </script>

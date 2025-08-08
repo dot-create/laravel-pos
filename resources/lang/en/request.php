@@ -224,4 +224,26 @@ return [
 
     'quotation_number' => 'Quotation Number',
 
+    'qty_exceeds_available' => 'Quantity exceeds available quantity. Available: :available',
+    'qty_exceeds_accepted' => 'Quantity exceeds accepted quantity. Accepted: :accepted',
+    'invoicing_report_updated' => 'Invoicing report updated successfully!',
+    'draft_sale' => 'Draft Sale',
+    'not_started' => 'Not Started',
+    'partial_invoiced' => 'Partial Invoiced',
+    'invoiced' => 'Invoiced',
+    'processing' => 'Processing...',
+    'accepted_quotes' => 'Accepted Quotes',
+
+    'content_request' => 'Content Request',
+    'pending_request' => 'Pending Request',
+
+    'header_information' => 'Header Information',
+    'stock_history' => 'Stock History',
+    'show_hide_history' => 'Show/Hide History',
+    'select' => 'Select',
+    'draft_ipr' => 'Draft IPR',
+    'no_items_selected' => 'No items selected',
+    'draft_saved_success' => 'Draft saved successfully!',
+    'updated_success' => 'Updated successfully!',
+    'draft_request' => 'Draft Request', 
 ];

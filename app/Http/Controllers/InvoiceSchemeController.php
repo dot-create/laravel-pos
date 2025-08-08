@@ -241,7 +241,7 @@ class InvoiceSchemeController extends Controller
             'expiration_date' => 'nullable|date|after_or_equal:start_date',
             'invoicing_key' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive',
-            'prefix' => 'nullable|string|max:10',
+            'prefix' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -333,7 +333,7 @@ class InvoiceSchemeController extends Controller
             'expiration_date' => 'nullable|date|after_or_equal:start_date',
             'invoicing_key' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive',
-            'prefix' => 'nullable|string|max:10',
+            'prefix' => 'nullable|string|max:255',
         ]);
 
         try {

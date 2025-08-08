@@ -1,4 +1,3 @@
-<!-- resources/views/sell/request/inf_report_invoicing.blade.php -->
 <div class="modal-dialog modal-xl" role="document">
     <div class="modal-content">
         <div class="modal-header">
@@ -7,6 +6,25 @@
                 <span aria-hidden="true">&times;</span>
             </button>
         </div>
+        
+        <!-- Header Information Section -->
+        <div class="header-info-section bg-light p-3">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>@lang('request.requisition_number'):</strong> {{ $request->request_reference }}
+                </div>
+                <div class="col-md-3">
+                    <strong>@lang('contact.customer'):</strong> {{ $request->contact->name }}
+                </div>
+                <div class="col-md-3">
+                    <strong>@lang('request.customer_po_number'):</strong> {{ $request->items[0]->po_number ?? 'N/A' }}
+                </div>
+                <div class="col-md-3">
+                    <strong>@lang('request.c_po_date'):</strong> {{ $request->created_at->format('Y-m-d') }}
+                </div>
+            </div>
+        </div>
+
         <form id="invoicing-inf-report-form" action="{{ route('request.update.invoicing.inf.report') }}" method="POST">
             @csrf
             <input type="hidden" name="request_id" value="{{ $request->id }}">
@@ -34,7 +52,6 @@
                                 <th rowspan="2" class="history-col">@lang('request.in_transit_qty_hs')</th>
                                 <th rowspan="2" class="history-col">@lang('request.committed_qty_hs')</th>
                                 <th colspan="3" class="text-center history-col">@lang('request.invoicing_info')</th>
-                                <!-- New column for Qty to generate invoice -->
                                 <th rowspan="2">@lang('request.qty_to_generate_invoice')</th>
                                 <th rowspan="2">@lang('request.invoiced_for_req')</th>
                                 <th rowspan="2">@lang('request.status')</th>
@@ -63,16 +80,19 @@
                                     <td class="history-col">{{ $item->pending_invoice }}</td>
                                     <td class="history-col">{{ $item->available_for_invoice }}</td>
                                     <td class="history-col">{{ $item->available_qty }}</td>
-                                    <!-- Editable Qty to generate invoice -->
+                                    <!-- Editable Qty to generate invoice with restriction -->
                                     <td>
                                         <input type="number" 
                                             name="items[{{ $item->id }}][qty_to_generate]"
                                             value="{{ old('items.'.$item->id.'.qty_to_generate', $item->invoiced_qty) }}"
                                             class="form-control input-sm qty-to-generate"
                                             min="0"
-                                            max="{{ $item->accepted_qty }}"
+                                            max="{{ $item->available_qty }}"
+                                            data-available-qty="{{ $item->available_qty }}"
                                             data-accepted-qty="{{ $item->accepted_qty }}"
                                             required>
+
+                                        <input type="hidden" name="items[{{ $item->id }}][available_qty]" value="{{ $item->available_qty }}">
                                     </td>
                                     <!-- Invoiced for Reg (auto-filled) -->
                                     <td class="invoiced-for-req">{{ $item->invoiced_qty }}</td>
@@ -113,11 +133,18 @@ $(document).ready(function() {
 
     // Validate quantity before submission
     $('.qty-to-generate').on('input', function() {
-        const maxQty = $(this).data('accepted-qty');
+        const availableQty = $(this).data('available-qty');
         let enteredQty = parseFloat($(this).val()) || 0;
         
-        if (enteredQty > maxQty) {
-            $(this).val(maxQty);
+        if (enteredQty > availableQty) {
+            $(this).val(availableQty);
+            toastr.warning('@lang('request.qty_exceeds_available')');
+        }
+        
+        // Also ensure it doesn't exceed accepted quantity
+        const acceptedQty = $(this).data('accepted-qty');
+        if (enteredQty > acceptedQty) {
+            $(this).val(acceptedQty);
             toastr.warning('@lang('request.qty_exceeds_accepted')');
         }
     });
@@ -131,9 +158,14 @@ $(document).ready(function() {
         let valid = true;
         $('.qty-to-generate').each(function() {
             const qty = parseFloat($(this).val()) || 0;
+            const availableQty = parseFloat($(this).data('available-qty'));
             const acceptedQty = parseFloat($(this).data('accepted-qty'));
             
-            if (qty > acceptedQty) {
+            if (qty > availableQty) {
+                valid = false;
+                $(this).addClass('is-invalid');
+                toastr.error('@lang('request.qty_exceeds_available')');
+            } else if (qty > acceptedQty) {
                 valid = false;
                 $(this).addClass('is-invalid');
                 toastr.error('@lang('request.qty_exceeds_accepted')');
@@ -143,6 +175,10 @@ $(document).ready(function() {
         });
         
         if (!valid) return;
+
+        // Show loading indicator
+        $('#draft-sale-btn').html('<i class="fas fa-spinner fa-spin"></i> Processing');
+        $('#draft-sale-btn').prop('disabled', true);
 
         $.ajax({
             url: form.attr('action'),
@@ -173,7 +209,16 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                toastr.error('@lang('messages.something_went_wrong')');
+                let errorMsg = '@lang('messages.something_went_wrong')';
+                if (xhr.responseJSON && xhr.responseJSON.msg) {
+                    errorMsg = xhr.responseJSON.msg;
+                }
+                toastr.error(errorMsg);
+            },
+            complete: function() {
+                // Reset button state
+                $('#draft-sale-btn').html('@lang('request.draft_sale')');
+                $('#draft-sale-btn').prop('disabled', false);
             }
         });
     });

@@ -3087,7 +3087,7 @@ class TransactionUtil extends Util
             $invoice_no = $prefix . $formatted_count;
 
             // Save next invoice state
-            $scheme->invoice_count += 1;
+            // $scheme->invoice_count += 1;
             $scheme->current_number = $count + 1;
             $scheme->save();
 

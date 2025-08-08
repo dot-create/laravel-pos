@@ -512,6 +512,12 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
         ->name('request.update.invoicing.inf.report');
 
     Route::get('/quotes/move-to-dispute/{id}', 'RequestController@moveToDispute')->name('quotes.moveToDispute');
+
+    Route::get('requests/invoicing-inf-report/{id}/full', 'RequestController@showInvoicingInfReportFull')
+        ->name('request.invoicing.inf.report.full');
+
+    Route::post('/request/save-draft', 'RequestController@saveDraft')
+        ->name('request.save.draft');
 });
 
 
