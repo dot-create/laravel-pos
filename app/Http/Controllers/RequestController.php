@@ -1463,11 +1463,6 @@ class RequestController extends Controller
         return view('sell.request.inf_report_invoicing', compact('request'));
     }
 
-    public function showPurchasingInfReport($id)
-    {
-        $request = $this->getRequestWithCalculatedItems($id);
-        return view('sell.request.inf_report_purchasing', compact('request'));
-    }
 
     private function getRequestWithCalculatedItems($id)
     {
@@ -1535,33 +1530,6 @@ class RequestController extends Controller
         }
 
         return $request;
-    }
-
-    public function updateInfReport(Request $request)
-    {
-        $business_id = request()->session()->get('user.business_id');
-        
-        foreach ($request->items as $item_id => $item_data) {
-            $requestItem = RequestItem::where('id', $item_id)
-                ->whereHas('request', function ($q) use ($business_id) {
-                    $q->where('business_id', $business_id);
-                })
-                ->first();
-
-            if ($requestItem) {
-                $requestItem->update([
-                    'cso_new_purchasing_req_no' => isset($item_data['cso_new_purchasing_req_no']) ? $item_data['cso_new_purchasing_req_no'] : $requestItem->cso_new_purchasing_req_no,
-                    'new_approved_qty_internal_req' => isset($item_data['new_approved_qty_internal_req']) ? $item_data['new_approved_qty_internal_req'] : $requestItem->new_approved_qty_internal_req,
-                    'status_purchase' => $item_data['status_purchase'],
-                    'internal_req_qty' => $item_data['internal_req_qty'] ?? $requestItem->internal_req_qty
-                ]);
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'msg' => __('messages.updated_success')
-        ]);
     }
 
     public function moveToDispute($id)
@@ -1694,7 +1662,12 @@ class RequestController extends Controller
         }
     }
 
-    // Add this method to save draft quantities
+    public function showPurchasingInfReport($id)
+    {
+        $request = $this->getRequestWithCalculatedItems($id);
+        return view('sell.request.inf_report_purchasing', compact('request'));
+    }
+
     public function saveDraft(Request $request)
     {
         $business_id = request()->session()->get('user.business_id');
@@ -1726,6 +1699,46 @@ class RequestController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error("Error saving draft: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'msg' => __('messages.something_went_wrong')
+            ], 500);
+        }
+    }
+
+    public function updateInfReport(Request $request)
+    {
+        $business_id = request()->session()->get('user.business_id');
+        
+        try {
+            DB::beginTransaction();
+            
+            foreach ($request->items as $item_id => $item_data) {
+                $requestItem = RequestItem::whereHas('request', function ($q) use ($business_id) {
+                        $q->where('business_id', $business_id);
+                    })
+                    ->find($item_id);
+                    
+                if ($requestItem) {
+                    $requestItem->update([
+                        'cso_new_purchasing_req_no' => isset($item_data['cso_new_purchasing_req_no']) ? $item_data['cso_new_purchasing_req_no'] : $requestItem->cso_new_purchasing_req_no,
+                        'status_purchase' => $item_data['status_purchase'],
+                        'received_qty' => $item_data['received_qty'] ?? 0,
+                        'internal_req_qty' => $item_data['internal_req_qty'] ?? $requestItem->internal_req_qty
+                    ]);
+                }
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'msg' => __('messages.updated_success')
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("Error updating INF report: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'msg' => __('messages.something_went_wrong')

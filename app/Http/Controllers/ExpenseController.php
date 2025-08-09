@@ -249,6 +249,13 @@ class ExpenseController extends Controller
                     }
                     return '';
                 })
+                ->editColumn(
+                    'payment_status',
+                    function ($row) {
+                        $payment_status = Transaction::getPaymentStatus($row);
+                        return (string) view('sell.partials.payment_status', ['payment_status' => $payment_status, 'id' => $row->id, 'for_purchase' => true]);
+                    }
+                )
                 ->addColumn('contact_company', function($row) {
                     return $row->contact_company ?: '';
                 })
